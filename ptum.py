@@ -453,6 +453,6 @@ if __name__ == '__main__':
     try:
         args.func(ac_api, args)
     except Exception as e:
-        logging.error(f'{args.func.__name__} failed: {e}')
+        logging.error(f'{args.func.__name__} failed: {e}', exc_info=True)
 
     sys.exit(0)
