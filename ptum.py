@@ -95,6 +95,13 @@ class Team:
 
         return teams
 
+    def validate_default_roles(self, errors, all_roles):
+        logging.debug(f'Validating default roles for {self.full_name}')
+        for role in self.default_roles:
+            if not valid_role_by_name(all_roles, role):
+                logging.error(f'default role {role} for team {self.full_name} is not a valid role')
+                errors.append(InvalidDefaultRole(self.full_name, role))
+
     def __str__(self):
         return f'Team[name={self.name},full_name={self.full_name}'
 
@@ -138,6 +145,13 @@ class User:
                     d[AUTHENTICATION_PROVIDER_ID], d[LOCALE_ID],
                     roles)
 
+    def validate_roles(self, errors, all_roles, team_full_name):
+        logging.debug(f'Validating roles of user {self.username}')
+        for role in self.roles:
+            if not valid_role_by_name(all_roles, role):
+                logging.error(f'Role {role} for user {self.username} in team {team_full_name} is not a valid role')
+                errors.append(InvalidRole(team_full_name, self.username, role))
+
     def __repr__(self):
 
         return f'User({self.username}, {self.email}, {self.first_name}, {self.last_name})'
@@ -159,39 +173,36 @@ class Model:
                 team_user_map[team.full_name] = user
                 self.user_map[user.username] = team_user_map
 
-    def validate(self, roles):
+    def validate(self, all_roles):
         logging.debug('Validating model')
 
         errors = []
-        self.validate_roles(errors, roles)
-        self.validate_users(errors)
+        self.validate_default_roles(errors, all_roles)
+        self.validate_users(errors, all_roles)
         return errors
 
-    def validate_roles(self, errors, roles):
+    def validate_default_roles(self, errors, all_roles):
         # make sure that all default roles are valid roles
         logging.debug('Validating default roles')
-        role_names = [r.name for r in roles]
         for team in self.teams:
-            for role in team.default_roles:
-                if role not in role_names:
-                    logging.error(f'default role {role} for team {team.full_name} is not a valid role')
-                    errors.append(InvalidDefaultRole(team.full_name, role))
+            team.validate_default_roles(errors, all_roles)
 
-    def validate_users(self, errors):
+    def validate_users(self, errors, all_roles):
         # Make sure users are consistent across all teams
         for username in self.user_map:
-            self.validate_user(errors, username,
+            self.validate_user(errors, all_roles, username,
                                self.user_map[username])
 
-    def validate_user(self, errors, username, team_user_map):
+    def validate_user(self, errors, all_roles, username, team_user_map):
         logging.debug(f'Validating user {username}')
-        if len(team_user_map) == 1:
-            return
 
-        logging.debug(f'User {username} belongs to multiple teams')
+        if len(team_user_map) == 1:
+            logging.debug(f'User {username} belongs to multiple teams')
+
         first_team = None
         first_user = None
         for team_full_name, user in team_user_map.items():
+            user.validate_roles(errors, all_roles, team_full_name)
             if not first_user:
                 first_team = self.team_map[team_full_name]
                 first_user = user
@@ -298,6 +309,19 @@ class InvalidDefaultRole:
         return f'InvalidDefaultRole({self.team_full_name}, {self.role})'
 
 
+class InvalidRole:
+
+    def __init__(self, team_full_name, username, role):
+
+        self.team_full_name = team_full_name
+        self.username = username
+        self.role = role
+
+    def __repr__(self):
+
+        return f'InvalidRole({self.team_full_name}, {self.username}, {self.role})'
+
+
 class ModelValidationError(Exception):
 
     def __init__(self, errors):
@@ -314,17 +338,23 @@ def get_team_parent_name(full_name):
 
 
 def role_name_from_id(roles, role_id):
-
     for role in roles:
         if role.id == role_id:
             return role.name
 
 
 def role_id_from_name(roles, role_name):
-
     for role in roles:
         if role.name == role_name:
             return role.id
+
+
+def valid_role_by_name(roles, role_name):
+    for role in roles:
+        if role.name == role_name:
+            return True
+
+    return False
 
 
 def retrieve_teams(ac_api, options):
