@@ -278,13 +278,26 @@ class Model:
 
         logging.debug('Creating new users')
         for username in sorted(users_to_create):
-            create_user(ac_api, username, dry_run)
+            create_user(ac_api, new_model.get_user_by_username(username), dry_run)
 
         logging.debug('Deleting users')
         for username in sorted(users_to_delete):
-            delete_user(ac_api, username, dry_run)
+            delete_user(ac_api, self.get_user_by_username(username), dry_run)
 
         # Update existing users
+
+    def get_user_by_username(self, username):
+        """Given a username, return the corresponding user object.
+
+        In a valid configuration, if a user belongs to multiple teams,
+        the user's details should be identical in each team so it
+        doesn't matter which one we return.
+
+        """
+        team_map = self.user_map[username]
+        for user in team_map.values():
+            return user
+
 
 class InconsistentUser:
 
@@ -425,18 +438,19 @@ def delete_team(ac_api, team_id, dry_run):
         ac_api.delete_a_team(team_id)
 
 
-def create_user(ac_api, username, email, first_name, last_name, team_ids,
-                role_ids, authentication_provider_id, locale_id, dry_run):
-    logging.debug(f'Creating user {username}')
+def create_user(ac_api, user, dry_run):
+    logging.debug(f'Creating user {user.username}')
     if not dry_run:
-        ac_api.create_new_user(username, '', role_ids, team_ids,
-                               authentication_provider_id, first_name,
-                               last_name, email, '', '', '', '', '',
-                               True, None, None, None)
+        ac_api.create_new_user(user.username, '', role_ids, team_ids,
+                               user.authentication_provider_id, user.first_name,
+                               user.last_name, user.email, '', '', '', '', '',
+                               True, None, None, user.locale_id)
 
 
-def delete_user(ac_api, username, dry_run):
-    logging.debug(f'Deleting user {username}')
+def delete_user(ac_api, user, dry_run):
+    logging.debug(f'Deleting user {user.username} ({user.user_id})')
+    if not dry_run:
+        ac_api.delete_a_user(user.user_id)
 
 
 def type_check(items):
