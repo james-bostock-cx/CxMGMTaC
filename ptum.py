@@ -9,11 +9,13 @@ import yaml
 from CheckmarxPythonSDK.CxRestAPISDK import AccessControlAPI
 
 # Constants for dictionary access
+AUTHENTICATION_PROVIDER_ID = 'authenticationProviderId'
 DEFAULT_ROLES = 'defaultRoles'
 EMAIL = 'email'
 FIRST_NAME = 'firstName'
 FULL_NAME = 'fullName'
 LAST_NAME = 'lastName'
+LOCALE_ID = 'localeId'
 NAME = 'name'
 ROLES = 'roles'
 USERNAME = 'username'
@@ -103,12 +105,15 @@ class Team:
 
 class User:
 
-    def __init__(self, username, email, first_name, last_name, roles=[]):
+    def __init__(self, username, email, first_name, last_name,
+                 authentication_provider_id, locale_id, roles=[]):
 
         self.username = username
         self.email = email
         self.first_name = first_name
         self.last_name = last_name
+        self.authentication_provider_id = authentication_provider_id
+        self.locale_id = locale_id
         self.roles = roles
 
     def to_dict(self):
@@ -120,6 +125,8 @@ class User:
             EMAIL: self.email,
             FIRST_NAME: self.first_name,
             LAST_NAME: self.last_name,
+            AUTHENTICATION_PROVIDER_ID: self.authentication_provider_id,
+            LOCALE_ID: self.locale_id,
             ROLES: self.roles
         }
 
@@ -127,7 +134,9 @@ class User:
     def from_dict(d):
         logging.debug(f'd: {d}')
         roles = d.get(ROLES, [])
-        return User(d[USERNAME], d[EMAIL], d[FIRST_NAME], d[LAST_NAME], roles)
+        return User(d[USERNAME], d[EMAIL], d[FIRST_NAME], d[LAST_NAME],
+                    d[AUTHENTICATION_PROVIDER_ID], d[LOCALE_ID],
+                    roles)
 
     def __repr__(self):
 
@@ -304,18 +313,36 @@ def get_team_parent_name(full_name):
     return '/'.join(full_name.split('/')[0:-1])
 
 
+def role_name_from_id(roles, role_id):
+
+    for role in roles:
+        if role.id == role_id:
+            return role.name
+
+
+def role_id_from_name(roles, role_name):
+
+    for role in roles:
+        if role.name == role_name:
+            return role.id
+
+
 def retrieve_teams(ac_api, options):
     logging.info('retrieve_teams')
     cx_teams = ac_api.get_all_teams()
     cx_users = ac_api.get_all_users()
+    all_roles = ac_api.get_all_roles()
     teams = []
     for cx_team in cx_teams:
         logging.debug(f'cx_team: {cx_team}')
         team = Team(cx_team.name, cx_team.full_name, team_id=cx_team.id)
         for cx_user in cx_users:
+            roles = [role_name_from_id(all_roles, r) for r in cx_user.role_ids]
             if cx_team.id in cx_user.team_ids:
                 team.add_user(User(cx_user.username, cx_user.email,
-                                   cx_user.first_name, cx_user.last_name))
+                                   cx_user.first_name, cx_user.last_name,
+                                   cx_user.authentication_provider_id,
+                                   cx_user.locale_id, roles))
         teams.append(team)
 
     return teams
@@ -411,10 +438,6 @@ if __name__ == '__main__':
                                help='Data directory')
     update_parser.add_argument('--dry-run', action='store_true', default='True',
                                help='Display updates without performing them')
-    update_parser.add_argument('locale-id', type=int, default=1,
-                               help='Specify the locale to be used when creating users')
-    update_parser.add_argument('authentication-provider-id', type=int, default=1,
-                               help='Specify the authentication provider to be used when creating users')
     update_parser.set_defaults(func=update)
 
     # Parser for the validate command
