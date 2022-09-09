@@ -116,8 +116,10 @@ class Team:
 class User:
 
     def __init__(self, username, email, first_name, last_name,
-                 authentication_provider_id, locale_id, roles=[]):
+                 authentication_provider_id, locale_id, roles=[],
+                 user_id=None):
 
+        self.user_id = user_id
         self.username = username
         self.email = email
         self.first_name = first_name
@@ -375,7 +377,7 @@ def retrieve_teams(ac_api, options):
                 team.add_user(User(cx_user.username, cx_user.email,
                                    cx_user.first_name, cx_user.last_name,
                                    cx_user.authentication_provider_id,
-                                   cx_user.locale_id, roles))
+                                   cx_user.locale_id, roles, cx_user.id))
         teams.append(team)
 
     return teams
