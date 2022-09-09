@@ -175,7 +175,7 @@ class Model:
             for role in team.default_roles:
                 if role not in role_names:
                     logging.error(f'default role {role} for team {team.full_name} is not a valid role')
-                    errors.append(InvalidRole(team.full_name, role))
+                    errors.append(InvalidDefaultRole(team.full_name, role))
 
     def validate_users(self, errors):
         # Make sure users are consistent across all teams
@@ -286,7 +286,7 @@ class InconsistentUser:
         return f'InconsistentUser({self.property}, {self.username}, {self.team_a}, {self.team_b}, {self.value_a}, {self.value_b})'
 
 
-class InvalidRole:
+class InvalidDefaultRole:
 
     def __init__(self, team_full_name, role):
 
@@ -295,7 +295,7 @@ class InvalidRole:
 
     def __repr__(self):
 
-        return f'InvalidRole({self.team_full_name}, {self.role})'
+        return f'InvalidDefaultRole({self.team_full_name}, {self.role})'
 
 
 class ModelValidationError(Exception):
