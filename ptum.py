@@ -88,6 +88,9 @@ class Team:
         for dirpath, dirs, files in os.walk(dirname):
             for filename in files:
                 path = pathlib.Path(dirpath) / pathlib.Path(filename)
+                if path.suffix.lower() not in ['.yaml', '.yml']:
+                    logging.debug(f'Skipping {path} as suffix ({path.suffix}) not recognised')
+                    continue
                 try:
                     teams.append(Team.load(path))
                 except Exception as e:
