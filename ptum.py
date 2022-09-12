@@ -17,12 +17,23 @@ FULL_NAME = 'fullName'
 LAST_NAME = 'lastName'
 LOCALE_ID = 'localeId'
 NAME = 'name'
-ROLE_IDS = 'role_ids'
 ROLES = 'roles'
-TEAM_IDS = 'team_ids'
 USERNAME = 'username'
 USERS = 'users'
 
+# The following are for when we update a user and have to match the
+# corresponding parameters of the update_a_user method
+
+U_EMAIL = 'email'
+U_FIRST_NAME = 'first_name'
+U_LAST_NAME = 'last_name'
+U_LOCALE_ID = 'locale_id'
+U_ROLE_IDS = 'role_ids'
+U_TEAM_IDS = 'team_ids'
+U_USER_ID = 'user_id'
+
+# Global variables
+role_manager = None
 
 class Team:
 
@@ -100,10 +111,10 @@ class Team:
 
         return teams
 
-    def validate_default_roles(self, errors, all_roles):
+    def validate_default_roles(self, errors):
         logging.debug(f'Validating default roles for {self.full_name}')
         for role in self.default_roles:
-            if not valid_role_by_name(all_roles, role):
+            if not role_manager.valid_role_by_name(role):
                 logging.error(f'default role {role} for team {self.full_name} is not a valid role')
                 errors.append(InvalidDefaultRole(self.full_name, role))
 
@@ -152,10 +163,10 @@ class User:
                     d[AUTHENTICATION_PROVIDER_ID], d[LOCALE_ID],
                     roles)
 
-    def validate_roles(self, errors, all_roles, team_full_name):
+    def validate_roles(self, errors, team_full_name):
         logging.debug(f'Validating roles of user {self.username}')
         for role in self.roles:
-            if not valid_role_by_name(all_roles, role):
+            if not role_manager.valid_role_by_name(role):
                 logging.error(f'Role {role} for user {self.username} in team {team_full_name} is not a valid role')
                 errors.append(InvalidRole(team_full_name, self.username, role))
 
@@ -166,17 +177,17 @@ class User:
         if self.username != other.username:
             raise valueError(f'Cannot generate updates for different users ({self.username} and {other.username})')
         if self.email != other.email:
-            updates[EMAIL] = other.email
+            updates[U_EMAIL] = other.email
         if self.first_name != other.first_name:
-            updates[FIRST_NAME] = other.first_name
+            updates[U_FIRST_NAME] = other.first_name
         if self.last_name != other.last_name:
-            updates[LAST_NAME] = other.last_name
+            updates[U_LAST_NAME] = other.last_name
         if self.authentication_provider_id != other.authentication_provider_id:
             raise ValueError('Cannot change authentication provider ID')
         if self.locale_id != other.locale_id:
-            updates[LOCALE_ID] = other.locale_id
+            updates[U_LOCALE_ID] = other.locale_id
         if self.roles != other.roles:
-            updates[ROLE_IDS] = other.roles
+            updates[U_ROLE_IDS] = [role_manager.role_id_from_name(r) for r in other.roles]
 
         return updates
 
@@ -201,27 +212,26 @@ class Model:
                 team_user_map[team.full_name] = user
                 self.user_map[user.username] = team_user_map
 
-    def validate(self, all_roles):
+    def validate(self):
         logging.debug('Validating model')
 
         errors = []
-        self.validate_default_roles(errors, all_roles)
-        self.validate_users(errors, all_roles)
+        self.validate_default_roles(errors)
+        self.validate_users(errors)
         return errors
 
-    def validate_default_roles(self, errors, all_roles):
+    def validate_default_roles(self, errors):
         # make sure that all default roles are valid roles
         logging.debug('Validating default roles')
         for team in self.teams:
-            team.validate_default_roles(errors, all_roles)
+            team.validate_default_roles(errors)
 
-    def validate_users(self, errors, all_roles):
+    def validate_users(self, errors):
         # Make sure users are consistent across all teams
         for username in self.user_map:
-            self.validate_user(errors, all_roles, username,
-                               self.user_map[username])
+            self.validate_user(errors, username, self.user_map[username])
 
-    def validate_user(self, errors, all_roles, username, team_user_map):
+    def validate_user(self, errors, username, team_user_map):
         logging.debug(f'Validating user {username}')
 
         if len(team_user_map) == 1:
@@ -230,7 +240,7 @@ class Model:
         first_team = None
         first_user = None
         for team_full_name, user in team_user_map.items():
-            user.validate_roles(errors, all_roles, team_full_name)
+            user.validate_roles(errors, team_full_name)
             if not first_user:
                 first_team = self.team_map[team_full_name]
                 first_user = user
@@ -314,9 +324,16 @@ class Model:
             old_team_ids = self.get_user_team_ids(username)
             new_user = new_model.get_user_by_username(username)
             new_team_ids = new_model.get_user_team_ids(username)
+            logging.debug(f'old_team_ids: {old_team_ids}')
+            logging.debug(f'new_team_ids: {new_team_ids}')
 
             updates = old_user.get_updates(new_user)
-            logging.debug(f'updates for {username}: {updates}')
+            if updates:
+                updates[U_USER_ID] = old_user.user_id
+                if old_team_ids != new_team_ids:
+                    updates[U_TEAM_IDS] = new_team_ids
+                logging.debug(f'updates for {username}: {updates}')
+                update_user(ac_api, updates, dry_run)
 
     def get_user_by_username(self, username):
         """Given a username, return the corresponding user object.
@@ -334,8 +351,39 @@ class Model:
         team_ids = []
         for team_full_name in self.user_map[username]:
             team = self.team_map[team_full_name]
+            if not team or not team.team_id:
+                raise RuntimeError(f'Cannot determine team ID for {team_full_name}')
             team_ids.append(team.team_id)
         return team_ids
+
+
+class RoleManager:
+
+    def __init__(self, ac_api):
+
+        self.all_roles = ac_api.get_all_roles()
+        logging.debug(f'all_roles: {[r.name for r in self.all_roles]}')
+
+    def role_name_from_id(self, role_id):
+        for role in self.all_roles:
+            if role.id == role_id:
+                return role.name
+
+        raise ValueError(f'{role_id}: invalid role ID')
+
+    def role_id_from_name(self, role_name):
+        for role in self.all_roles:
+            if role.name == role_name:
+                return role.id
+
+        raise ValueError(f'{role_name}: invalid role name')
+
+    def valid_role_by_name(self, role_name):
+        for role in self.all_roles:
+            if role.name == role_name:
+                return True
+
+        return False
 
 
 class InconsistentUser:
@@ -394,37 +442,16 @@ def get_team_parent_name(full_name):
     return '/'.join(full_name.split('/')[0:-1])
 
 
-def role_name_from_id(roles, role_id):
-    for role in roles:
-        if role.id == role_id:
-            return role.name
-
-
-def role_id_from_name(roles, role_name):
-    for role in roles:
-        if role.name == role_name:
-            return role.id
-
-
-def valid_role_by_name(roles, role_name):
-    for role in roles:
-        if role.name == role_name:
-            return True
-
-    return False
-
-
 def retrieve_teams(ac_api, options):
     logging.info('retrieve_teams')
     cx_teams = ac_api.get_all_teams()
     cx_users = ac_api.get_all_users()
-    all_roles = ac_api.get_all_roles()
     teams = []
     for cx_team in cx_teams:
         logging.debug(f'cx_team: {cx_team}')
         team = Team(cx_team.name, cx_team.full_name, team_id=cx_team.id)
         for cx_user in cx_users:
-            roles = [role_name_from_id(all_roles, r) for r in cx_user.role_ids]
+            roles = [role_manager.role_name_from_id(r) for r in cx_user.role_ids]
             if cx_team.id in cx_user.team_ids:
                 team.add_user(User(cx_user.username, cx_user.email,
                                    cx_user.first_name, cx_user.last_name,
@@ -451,11 +478,9 @@ def update(ac_api, options):
 
 def validate(ac_api, options):
     logging.info(f'Validating files in {options.data_dir}')
-    roles = ac_api.get_all_roles()
-    logging.debug(f'roles: {[r.name for r in roles]}')
     teams = Team.load_dir(options.data_dir)
     model = Model(teams)
-    errors = model.validate(roles)
+    errors = model.validate()
     if errors:
         logging.error('Model failed validation')
         raise ModelValidationError(errors)
@@ -490,6 +515,12 @@ def delete_user(ac_api, user, dry_run):
     logging.debug(f'Deleting user {user.username} ({user.user_id})')
     if not dry_run:
         ac_api.delete_a_user(user.user_id)
+
+
+def update_user(ac_api, updates, dry_run):
+    logging.debug(f'Updating user with ID {updates[U_USER_ID]}')
+    if not dry_run:
+        ac_api.update_a_user(**updates)
 
 
 def type_check(items):
@@ -540,6 +571,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=args.log_level, format=args.log_format)
 
     try:
+        role_manager = RoleManager(ac_api)
         args.func(ac_api, args)
     except Exception as e:
         logging.error(f'{args.func.__name__} failed: {e}', exc_info=True)
