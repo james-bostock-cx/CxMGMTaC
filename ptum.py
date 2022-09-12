@@ -461,7 +461,8 @@ def type_check(items):
 
 def usage(ac_api, args):
 
-    print('''usage: scratch.py <extract|update|validate> [args]''')
+    print(f'''usage: py {sys.argv[0]} <extract|update|validate> [args]''')
+
 
 if __name__ == '__main__':
 
