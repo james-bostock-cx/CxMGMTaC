@@ -301,6 +301,13 @@ class Model:
         for team_full_name in sorted(teams_to_delete, reverse=True):
             delete_team(ac_api, self.team_map[team_full_name].team_id, dry_run)
 
+        # Update team_id values of existing teams in the new model
+        for team_name in cur_team_names:
+            if team_name in new_team_names:
+                old_team = self.team_map[team_name]
+                new_team = new_model.team_map[team_name]
+                new_team.team_id = old_team.team_id
+
     def apply_user_changes(self, ac_api, new_model, dry_run):
         logging.debug('Applying user changes')
 
