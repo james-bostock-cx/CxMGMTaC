@@ -324,8 +324,6 @@ class Model:
             old_team_ids = self.get_user_team_ids(username)
             new_user = new_model.get_user_by_username(username)
             new_team_ids = new_model.get_user_team_ids(username)
-            logging.debug(f'old_team_ids: {old_team_ids}')
-            logging.debug(f'new_team_ids: {new_team_ids}')
 
             updates = old_user.get_updates(new_user)
             if updates:
