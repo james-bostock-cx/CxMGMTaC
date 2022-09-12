@@ -17,7 +17,9 @@ FULL_NAME = 'fullName'
 LAST_NAME = 'lastName'
 LOCALE_ID = 'localeId'
 NAME = 'name'
+ROLE_IDS = 'role_ids'
 ROLES = 'roles'
+TEAM_IDS = 'team_ids'
 USERNAME = 'username'
 USERS = 'users'
 
@@ -157,9 +159,30 @@ class User:
                 logging.error(f'Role {role} for user {self.username} in team {team_full_name} is not a valid role')
                 errors.append(InvalidRole(team_full_name, self.username, role))
 
+    def get_updates(self, other):
+
+        #logging.debug(f'Comparing {self} with {other}')
+        updates = {}
+        if self.username != other.username:
+            raise valueError(f'Cannot generate updates for different users ({self.username} and {other.username})')
+        if self.email != other.email:
+            updates[EMAIL] = other.email
+        if self.first_name != other.first_name:
+            updates[FIRST_NAME] = other.first_name
+        if self.last_name != other.last_name:
+            updates[LAST_NAME] = other.last_name
+        if self.authentication_provider_id != other.authentication_provider_id:
+            raise ValueError('Cannot change authentication provider ID')
+        if self.locale_id != other.locale_id:
+            updates[LOCALE_ID] = other.locale_id
+        if self.roles != other.roles:
+            updates[ROLE_IDS] = other.roles
+
+        return updates
+
     def __repr__(self):
 
-        return f'User({self.username}, {self.email}, {self.first_name}, {self.last_name})'
+        return f'User({self.username}, {self.email}, {self.first_name}, {self.last_name}, {self.authentication_provider_id}, {self.locale_id}, {self.roles})'
 
 
 class Model:
@@ -278,6 +301,7 @@ class Model:
 
         logging.debug('Creating new users')
         for username in sorted(users_to_create):
+            # TODO! role_ids and team_ids
             create_user(ac_api, new_model.get_user_by_username(username), dry_run)
 
         logging.debug('Deleting users')
@@ -285,6 +309,14 @@ class Model:
             delete_user(ac_api, self.get_user_by_username(username), dry_run)
 
         # Update existing users
+        for username in cur_users & new_users:
+            old_user = self.get_user_by_username(username)
+            old_team_ids = self.get_user_team_ids(username)
+            new_user = new_model.get_user_by_username(username)
+            new_team_ids = new_model.get_user_team_ids(username)
+
+            updates = old_user.get_updates(new_user)
+            logging.debug(f'updates for {username}: {updates}')
 
     def get_user_by_username(self, username):
         """Given a username, return the corresponding user object.
@@ -297,6 +329,13 @@ class Model:
         team_map = self.user_map[username]
         for user in team_map.values():
             return user
+
+    def get_user_team_ids(self, username):
+        team_ids = []
+        for team_full_name in self.user_map[username]:
+            team = self.team_map[team_full_name]
+            team_ids.append(team.team_id)
+        return team_ids
 
 
 class InconsistentUser:
