@@ -561,7 +561,7 @@ if __name__ == '__main__':
     update_parser = subparsers.add_parser('update')
     update_parser.add_argument('--data-dir', type=str, default='.',
                                help='Data directory')
-    update_parser.add_argument('--dry-run', action='store_true', default='False',
+    update_parser.add_argument('--dry-run', action='store_true', default=False,
                                help='Display updates without performing them')
     update_parser.set_defaults(func=update)
 
