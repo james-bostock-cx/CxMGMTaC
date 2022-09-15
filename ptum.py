@@ -344,13 +344,13 @@ class Model:
 
     def apply_changes(self, ac_api, new_model, dry_run):
         """Applies the changes needed to make this model match the new model."""
-        logging.debug('Applying changes')
+        logging.info('Applying changes')
         self.apply_team_changes(ac_api, new_model, dry_run)
         self.apply_user_changes(ac_api, new_model, dry_run)
 
     def apply_team_changes(self, ac_api, new_model, dry_run):
         """Applies team changes to make this model match the new model."""
-        logging.debug('Applying team changes')
+        logging.info('Applying team changes')
         cur_team_names = set(self.team_map.keys())
         new_team_names = set(new_model.team_map.keys())
         teams_to_create = new_team_names - cur_team_names
@@ -387,7 +387,7 @@ class Model:
 
     def apply_user_changes(self, ac_api, new_model, dry_run):
         """Applies user changes to make this model match the new model."""
-        logging.debug('Applying user changes')
+        logging.info('Applying user changes')
 
         cur_users = set(self.user_map.keys())
         new_users = set(new_model.user_map.keys())
@@ -579,19 +579,19 @@ def validate(ac_api, options):
 
 
 def create_team(ac_api, team_name, team_parent_id, dry_run):
-    logging.debug(f'Creating team {team_name} under parent {team_parent_id}')
+    logging.info(f'Creating team {team_name} under parent {team_parent_id}')
     if not dry_run:
         ac_api.create_new_team(team_name, team_parent_id)
 
 
 def delete_team(ac_api, team_id, dry_run):
-    logging.debug(f'Deleting team {team_id}')
+    logging.info(f'Deleting team {team_id}')
     if not dry_run:
         ac_api.delete_a_team(team_id)
 
 
 def create_user(ac_api, user, team_ids, dry_run):
-    logging.debug(f'Creating user {user.username}')
+    logging.info(f'Creating user {user.username}')
     if not dry_run:
         role_ids = [role_manager.role_id_from_name(r) for r in user.roles]
         ac_api.create_new_user(user.username, '', role_ids, list(team_ids),
@@ -604,13 +604,13 @@ def create_user(ac_api, user, team_ids, dry_run):
 
 
 def delete_user(ac_api, user, dry_run):
-    logging.debug(f'Deleting user {user.username} ({user.user_id})')
+    logging.info(f'Deleting user {user.username} ({user.user_id})')
     if not dry_run:
         ac_api.delete_a_user(user.user_id)
 
 
 def update_user(ac_api, updates, dry_run):
-    logging.debug(f'Updating user with ID {updates[USER_ID]}')
+    logging.info(f'Updating user with ID {updates[USER_ID]}')
     if USER_ID not in updates or not updates[USER_ID]:
         raise ValueError(f'{USER_ID} missing from updates dictionary')
     logging.debug(f'updates: {updates}')
