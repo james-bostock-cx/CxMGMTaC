@@ -569,7 +569,7 @@ def create_user(ac_api, user, team_ids, dry_run):
     logging.debug(f'Creating user {user.username}')
     if not dry_run:
         role_ids = [role_manager.role_id_from_name(r) for r in user.roles]
-        ac_api.create_new_user(user.username, '', role_ids, team_ids,
+        ac_api.create_new_user(user.username, '', role_ids, list(team_ids),
                                user.authentication_provider_id, user.first_name,
                                user.last_name, user.email, '', '', '', '', '',
                                True, None, None, user.locale_id)
