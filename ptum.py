@@ -319,7 +319,8 @@ class Model:
         logging.debug('Creating new users')
         for username in sorted(users_to_create):
             # TODO! role_ids and team_ids
-            create_user(ac_api, new_model.get_user_by_username(username), dry_run)
+            create_user(ac_api, new_model.get_user_by_username(username),
+                        new_model.get_user_team_ids(username), dry_run)
 
         logging.debug('Deleting users')
         for username in sorted(users_to_delete):
@@ -507,9 +508,10 @@ def delete_team(ac_api, team_id, dry_run):
         ac_api.delete_a_team(team_id)
 
 
-def create_user(ac_api, user, dry_run):
+def create_user(ac_api, user, team_ids, dry_run):
     logging.debug(f'Creating user {user.username}')
     if not dry_run:
+        role_ids = [role_manager.role_id_from_name(r) for r in user.roles]
         ac_api.create_new_user(user.username, '', role_ids, team_ids,
                                user.authentication_provider_id, user.first_name,
                                user.last_name, user.email, '', '', '', '', '',
