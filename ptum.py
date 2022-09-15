@@ -47,6 +47,9 @@ class Team:
         self.default_roles = set(default_roles)
         self.users = []
 
+        if self.full_name.split('/')[-1] != self.name:
+            raise ValueError(f'Last component of team full name ({self.full_name}) does not match team name ({self.name})')
+
     def add_user(self, user):
 
         self.users.append(user)
