@@ -597,20 +597,20 @@ if __name__ == '__main__':
     parser.add_argument('--log-format', type=str,
                         default='%(asctime)s | %(levelname)s | %(funcName)s: %(message)s',
                         help='The log format')
-    parser.add_argument('--log-level', type=str, default='INFO',
+    parser.add_argument('-l', '--log-level', type=str, default='INFO',
                         help='The log level')
     parser.set_defaults(func=usage)
     subparsers = parser.add_subparsers(help='sub-command help')
 
     # Parser for the extract command
     extract_parser = subparsers.add_parser('extract')
-    extract_parser.add_argument('--dest-dir', type=str, default='.',
+    extract_parser.add_argument('-d', '--dest-dir', type=str, default='.',
                                 help='Destination directory')
     extract_parser.set_defaults(func=extract)
 
     # Parser for the update command
     update_parser = subparsers.add_parser('update')
-    update_parser.add_argument('--data-dir', type=str, default='.',
+    update_parser.add_argument('-d', '--data-dir', type=str, default='.',
                                help='Data directory')
     update_parser.add_argument('--dry-run', action='store_true', default=False,
                                help='Display updates without performing them')
@@ -618,7 +618,7 @@ if __name__ == '__main__':
 
     # Parser for the validate command
     validate_parser = subparsers.add_parser('validate')
-    validate_parser.add_argument('--data-dir', type=str, default='.',
+    validate_parser.add_argument('-d', '--data-dir', type=str, default='.',
                                  help='Data directory')
     validate_parser.set_defaults(func=validate)
 
