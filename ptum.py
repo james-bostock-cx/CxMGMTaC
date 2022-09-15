@@ -1,3 +1,4 @@
+"""Manage projects, teams and users via config-as-code."""
 import argparse
 from collections import namedtuple
 import copy
@@ -67,6 +68,7 @@ class Team:
 
     @staticmethod
     def from_dict(d):
+        """Creates a Team from a dictionary."""
         logging.debug(f'd: {d}')
         type_check(d, [
             Property(NAME, str, True),
@@ -82,7 +84,10 @@ class Team:
     def save(self, dest_dir="."):
         """Save the team to a file in the specified directory.
 
-        The filename is the team's full name, URL encoded, with a ".yml" suffix.
+        The filename is the team's name, with a ".yml" suffix. The
+        file is created in a directory whose path reflects the team's
+        full name.
+
         """
         logging.debug(f'Team.save: full_name: {self.full_name}, dest_dir: {dest_dir}')
 
@@ -95,6 +100,7 @@ class Team:
 
     @staticmethod
     def load(filename):
+        """Loads a team from a YAM file."""
         logging.debug(f'Loading team from {filename}')
         with open(filename, 'r') as f:
             data = yaml.load(f, Loader=yaml.CLoader)
@@ -102,6 +108,7 @@ class Team:
 
     @staticmethod
     def load_dir(dirname):
+        """Loads all the teams from the YAML files in the named directory and its subdirectories."""
         logging.debug(f'Loading teams from {dirname}')
         teams = []
         for dirpath, dirs, files in os.walk(dirname):
@@ -119,6 +126,7 @@ class Team:
         return teams
 
     def validate_default_roles(self, errors):
+        """Validates the team's default roles."""
         logging.debug(f'Validating default roles for {self.full_name}')
         for role in self.default_roles:
             if not role_manager.valid_role_by_name(role):
@@ -184,12 +192,14 @@ class User:
 
     @staticmethod
     def from_dict(d):
+        """Creates a User from a dictionary."""
         logging.debug(f'd: {d}')
         roles = set(d.get(ROLES, []))
         d[ROLES] = roles
         return User(**d)
 
     def validate_roles(self, errors, team_full_name):
+        """Validates the user's roles."""
         logging.debug(f'Validating roles of user {self.username}')
         for role in self.roles:
             if not role_manager.valid_role_by_name(role):
@@ -197,7 +207,7 @@ class User:
                 errors.append(InvalidRole(team_full_name, self.username, role))
 
     def get_updates(self, other, old_team_ids, new_team_ids):
-
+        """Creates an dictionary with field updates to make this User match the other User."""
         #logging.debug(f'Comparing {self} with {other}')
         updates = {}
         if self.username != other.username:
@@ -243,6 +253,14 @@ class User:
 
 
 class Model:
+    """A model of teams an users.
+
+    The model consists of two dictionaries:
+
+    - team_map: a mapping from a team's full name to a corresponding Team instance.
+    - user_map: a mapping from a user's username to a mapping of team full names to
+                User instances.
+    """
 
     def __init__(self, teams):
 
@@ -259,6 +277,7 @@ class Model:
                 self.user_map[user.username] = team_user_map
 
     def validate(self):
+        """Validates the model."""
         logging.debug('Validating model')
 
         errors = []
@@ -267,17 +286,18 @@ class Model:
         return errors
 
     def validate_default_roles(self, errors):
-        # make sure that all default roles are valid roles
+        """Validates each team's default roles."""
         logging.debug('Validating default roles')
         for team in self.teams:
             team.validate_default_roles(errors)
 
     def validate_users(self, errors):
-        # Make sure users are consistent across all teams
+        """Makes sure that user definitions are consistent across teams."""
         for username in self.user_map:
             self.validate_user(errors, username, self.user_map[username])
 
     def validate_user(self, errors, username, team_user_map):
+        """Validates the specified user."""
         logging.debug(f'Validating user {username}')
 
         if len(team_user_map) == 1:
@@ -313,6 +333,7 @@ class Model:
                                                    roles))
 
     def get_user_roles(self, user, team):
+        """Returns the specified user's roles."""
         logging.debug(f'user: {user}, team: {team}')
         if user.roles:
             logging.debug(f'Using user\'s roles: {user.roles}')
@@ -322,11 +343,13 @@ class Model:
             return team.default_roles
 
     def apply_changes(self, ac_api, new_model, dry_run):
+        """Applies the changes needed to make this model match the new model."""
         logging.debug('Applying changes')
         self.apply_team_changes(ac_api, new_model, dry_run)
         self.apply_user_changes(ac_api, new_model, dry_run)
 
     def apply_team_changes(self, ac_api, new_model, dry_run):
+        """Applies team changes to make this model match the new model."""
         logging.debug('Applying team changes')
         cur_team_names = set(self.team_map.keys())
         new_team_names = set(new_model.team_map.keys())
@@ -363,6 +386,7 @@ class Model:
                 new_team.team_id = old_team.team_id
 
     def apply_user_changes(self, ac_api, new_model, dry_run):
+        """Applies user changes to make this model match the new model."""
         logging.debug('Applying user changes')
 
         cur_users = set(self.user_map.keys())
@@ -407,6 +431,7 @@ class Model:
             return user
 
     def get_user_team_ids(self, username):
+        """Returns a set of team ids of which the specified user is a member."""
         team_ids = []
         for team_full_name in self.user_map[username]:
             team = self.team_map[team_full_name]
