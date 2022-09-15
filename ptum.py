@@ -571,8 +571,11 @@ def create_user(ac_api, user, team_ids, dry_run):
         role_ids = [role_manager.role_id_from_name(r) for r in user.roles]
         ac_api.create_new_user(user.username, '', role_ids, list(team_ids),
                                user.authentication_provider_id, user.first_name,
-                               user.last_name, user.email, '', '', '', '', '',
-                               True, None, None, user.locale_id)
+                               user.last_name, user.email, user.phone_number,
+                               user.cell_phone_number, user.job_title,
+                               user.other, user.country, user.active,
+                               user.expiration_date, user.allowed_ip_list,
+                               user.locale_id)
 
 
 def delete_user(ac_api, user, dry_run):
