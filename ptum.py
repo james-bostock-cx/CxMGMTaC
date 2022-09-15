@@ -586,9 +586,9 @@ def type_check(d, properties):
     for property in properties:
         if property.name in d:
             if type(d[property.name]) != property.type:
-                raise TypeError(f'Type of {property.name} is {type(d[property.name])} (expected {property.type})')
+                raise TypeError(f'Type of "{property.name}" property is {type(d[property.name])} (expected {property.type})')
         elif property.mandatory:
-            raise ValueError(f'Property {property.name} is mandatory')
+            raise ValueError(f'"{property.name}" property is mandatory')
 
 
 def usage(ac_api, args):
