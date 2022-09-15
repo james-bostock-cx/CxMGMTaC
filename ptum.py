@@ -58,7 +58,7 @@ class Team:
         return {
             NAME: self.name,
             FULL_NAME: self.full_name,
-            DEFAULT_ROLES: self.default_roles,
+            DEFAULT_ROLES: list(self.default_roles),
             USERS: [user.to_dict() for user in self.users]
         }
 
@@ -111,6 +111,7 @@ class Team:
                     teams.append(Team.load(path))
                 except Exception as e:
                     logging.debug(f'Could not load team from {path}: {e}')
+                    raise e
 
         return teams
 
@@ -167,7 +168,7 @@ class User:
             LAST_NAME: self.last_name,
             AUTHENTICATION_PROVIDER_ID: self.authentication_provider_id,
             LOCALE_ID: self.locale_id,
-            ROLES: self.roles,
+            ROLES: list(self.roles),
             ACTIVE: self.active,
             ALLOWED_IP_LIST: self.allowed_ip_list,
             CELL_PHONE_NUMBER: self.cell_phone_number,
@@ -181,7 +182,7 @@ class User:
     @staticmethod
     def from_dict(d):
         logging.debug(f'd: {d}')
-        roles = d.get(ROLES, [])
+        roles = set(d.get(ROLES, []))
         d[ROLES] = roles
         return User(**d)
 
