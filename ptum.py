@@ -333,15 +333,23 @@ class Model:
         teams_to_create = new_team_names - cur_team_names
         teams_to_delete = cur_team_names - new_team_names
 
+        # Update ids of teams in new_model
+        for team_full_name in new_model.team_map:
+            if team_full_name in self.team_map:
+                new_model.team_map[team_full_name].team_id = self.team_map[team_full_name].team_id
+
         logging.debug('Creating new teams')
-        team_map = copy.deepcopy(self.team_map)
+        team_map = copy.deepcopy(new_model.team_map)
         for team_full_name in sorted(teams_to_create):
             team = new_model.team_map[team_full_name]
             parent_full_name = get_team_parent_name(team_full_name)
             parent_id = team_map[parent_full_name].team_id
-            team_id = create_team(ac_api, team.name, parent_id, dry_run)
+            create_team(ac_api, team.name, parent_id, dry_run)
+            team_id = ac_api.get_team_id_by_full_name(team.full_name)
+            logging.debug(f'Team ID for {team.name} is {team_id}')
             team.team_id = team_id
             team_map[team.full_name] = team
+        new_model.team_map = team_map
 
         logging.debug('Deleting teams')
         for team_full_name in sorted(teams_to_delete, reverse=True):
