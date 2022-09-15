@@ -9,28 +9,28 @@ import yaml
 from CheckmarxPythonSDK.CxRestAPISDK import AccessControlAPI
 
 # Constants for dictionary access
-AUTHENTICATION_PROVIDER_ID = 'authenticationProviderId'
-DEFAULT_ROLES = 'defaultRoles'
+ACTIVE = 'active'
+ALLOWED_IP_LIST = 'allowed_ip_list'
+AUTHENTICATION_PROVIDER_ID = 'authentication_provider_id'
+CELL_PHONE_NUMBER = 'cell_phone_number'
+COUNTRY = 'country'
+DEFAULT_ROLES = 'default_roles'
 EMAIL = 'email'
-FIRST_NAME = 'firstName'
-FULL_NAME = 'fullName'
-LAST_NAME = 'lastName'
-LOCALE_ID = 'localeId'
+EXPIRATION_DATE = 'expiration_date'
+FIRST_NAME = 'first_name'
+JOB_TITLE = 'job_title'
+FULL_NAME = 'full_name'
+LAST_NAME = 'last_name'
+LOCALE_ID = 'locale_id'
 NAME = 'name'
+OTHER = 'other'
+PHONE_NUMBER = 'phone_number'
+ROLE_IDS = 'role_ids'
 ROLES = 'roles'
+TEAM_IDS = 'team_ids'
+USER_ID = 'user_id'
 USERNAME = 'username'
 USERS = 'users'
-
-# The following are for when we update a user and have to match the
-# corresponding parameters of the update_a_user method
-
-U_EMAIL = 'email'
-U_FIRST_NAME = 'first_name'
-U_LAST_NAME = 'last_name'
-U_LOCALE_ID = 'locale_id'
-U_ROLE_IDS = 'role_ids'
-U_TEAM_IDS = 'team_ids'
-U_USER_ID = 'user_id'
 
 # Global variables
 role_manager = None
@@ -41,7 +41,7 @@ class Team:
         self.team_id = team_id
         self.name = name
         self.full_name = full_name
-        self.default_roles = default_roles
+        self.default_roles = set(default_roles)
         self.users = []
 
     def add_user(self, user):
@@ -130,8 +130,12 @@ class User:
 
     def __init__(self, username, email, first_name, last_name,
                  authentication_provider_id, locale_id, roles=[],
-                 user_id=None):
+                 active=None, allowed_ip_list=None, cell_phone_number=None,
+                 country=None, expiration_date=None, job_title=None,
+                 other=None, phone_number=None, user_id=None):
 
+        if type(active) != bool:
+            raise TypeError(f'active is {active} (expected Boolean value)')
         self.user_id = user_id
         self.username = username
         self.email = email
@@ -139,7 +143,15 @@ class User:
         self.last_name = last_name
         self.authentication_provider_id = authentication_provider_id
         self.locale_id = locale_id
-        self.roles = roles
+        self.roles = set(roles)
+        self.active = active
+        self.allowed_ip_list = allowed_ip_list
+        self.cell_phone_number = cell_phone_number
+        self.country = country
+        self.expiration_date = expiration_date
+        self.job_title = job_title
+        self.other = other
+        self.phone_number = phone_number
 
     def to_dict(self):
         """Generate a dictionary representation of the user (which leads to
@@ -152,16 +164,23 @@ class User:
             LAST_NAME: self.last_name,
             AUTHENTICATION_PROVIDER_ID: self.authentication_provider_id,
             LOCALE_ID: self.locale_id,
-            ROLES: self.roles
+            ROLES: self.roles,
+            ACTIVE: self.active,
+            ALLOWED_IP_LIST: self.allowed_ip_list,
+            CELL_PHONE_NUMBER: self.cell_phone_number,
+            COUNTRY: self.country,
+            EXPIRATION_DATE: self.expiration_date,
+            JOB_TITLE: self.job_title,
+            OTHER: self.other,
+            PHONE_NUMBER: self.phone_number
         }
 
     @staticmethod
     def from_dict(d):
         logging.debug(f'd: {d}')
         roles = d.get(ROLES, [])
-        return User(d[USERNAME], d[EMAIL], d[FIRST_NAME], d[LAST_NAME],
-                    d[AUTHENTICATION_PROVIDER_ID], d[LOCALE_ID],
-                    roles)
+        d[ROLES] = roles
+        return User(**d)
 
     def validate_roles(self, errors, team_full_name):
         logging.debug(f'Validating roles of user {self.username}')
@@ -170,26 +189,46 @@ class User:
                 logging.error(f'Role {role} for user {self.username} in team {team_full_name} is not a valid role')
                 errors.append(InvalidRole(team_full_name, self.username, role))
 
-    def get_updates(self, other):
+    def get_updates(self, other, old_team_ids, new_team_ids):
 
         #logging.debug(f'Comparing {self} with {other}')
         updates = {}
         if self.username != other.username:
             raise valueError(f'Cannot generate updates for different users ({self.username} and {other.username})')
-        if self.email != other.email:
-            updates[U_EMAIL] = other.email
-        if self.first_name != other.first_name:
-            updates[U_FIRST_NAME] = other.first_name
-        if self.last_name != other.last_name:
-            updates[U_LAST_NAME] = other.last_name
         if self.authentication_provider_id != other.authentication_provider_id:
             raise ValueError('Cannot change authentication provider ID')
-        if self.locale_id != other.locale_id:
-            updates[U_LOCALE_ID] = other.locale_id
-        if self.roles != other.roles:
-            updates[U_ROLE_IDS] = [role_manager.role_id_from_name(r) for r in other.roles]
 
-        return updates
+        found_updates = False
+        for attr in [ACTIVE, ALLOWED_IP_LIST, CELL_PHONE_NUMBER,
+                      COUNTRY, EMAIL, EXPIRATION_DATE, FIRST_NAME,
+                      JOB_TITLE, LAST_NAME, LOCALE_ID, OTHER,
+                      PHONE_NUMBER]:
+
+            if hasattr(other, attr) and (getattr(self, attr) != getattr(other, attr)):
+                updates[attr] = getattr(other, attr)
+                logging.debug(f'User {self.username}: {attr} has changed from {getattr(self, attr)} to {getattr(other, attr)}')
+                found_updates = True
+            else:
+                updates[attr] = getattr(self, attr)
+
+        if old_team_ids != new_team_ids:
+            updates[TEAM_IDS] = new_team_ids
+            logging.debug(f'User {self.username}: team_ids has changed from {old_team_ids} to {new_team_ids}')
+            found_updates = True
+        else:
+            updates[TEAM_IDS] = old_team_ids
+
+        if self.roles != other.roles:
+            updates[ROLE_IDS] = [role_manager.role_id_from_name(r) for r in other.roles]
+            logging.debug(f'User {self.username}: roles has changed from {self.roles} to {other.roles}')
+            found_updates = True
+        else:
+            updates[ROLE_IDS] = [role_manager.role_id_from_name(r) for r in self.roles]
+
+        if found_updates:
+            return updates
+        else:
+            return None
 
     def __repr__(self):
 
@@ -333,11 +372,10 @@ class Model:
             new_user = new_model.get_user_by_username(username)
             new_team_ids = new_model.get_user_team_ids(username)
 
-            updates = old_user.get_updates(new_user)
+            updates = old_user.get_updates(new_user, old_team_ids, new_team_ids)
             if updates:
-                updates[U_USER_ID] = old_user.user_id
-                if old_team_ids != new_team_ids:
-                    updates[U_TEAM_IDS] = new_team_ids
+                logging.debug(f'Setting updates[{USER_ID}] to {old_user.user_id}')
+                updates[USER_ID] = old_user.user_id
                 logging.debug(f'updates for {username}: {updates}')
                 update_user(ac_api, updates, dry_run)
 
@@ -360,7 +398,7 @@ class Model:
             if not team or not team.team_id:
                 raise RuntimeError(f'Cannot determine team ID for {team_full_name}')
             team_ids.append(team.team_id)
-        return team_ids
+        return set(team_ids)
 
 
 class RoleManager:
@@ -462,7 +500,12 @@ def retrieve_teams(ac_api, options):
                 team.add_user(User(cx_user.username, cx_user.email,
                                    cx_user.first_name, cx_user.last_name,
                                    cx_user.authentication_provider_id,
-                                   cx_user.locale_id, roles, cx_user.id))
+                                   cx_user.locale_id, roles, cx_user.active,
+                                   cx_user.allowed_ip_list,
+                                   cx_user.cell_phone_number, cx_user.country,
+                                   cx_user.expiration_date, cx_user.job_title,
+                                   cx_user.other, cx_user.phone_number,
+                                   cx_user.id))
         teams.append(team)
 
     return teams
@@ -525,7 +568,13 @@ def delete_user(ac_api, user, dry_run):
 
 
 def update_user(ac_api, updates, dry_run):
-    logging.debug(f'Updating user with ID {updates[U_USER_ID]}')
+    logging.debug(f'Updating user with ID {updates[USER_ID]}')
+    if USER_ID not in updates or not updates[USER_ID]:
+        raise ValueError(f'{USER_ID} missing from updates dictionary')
+    logging.debug(f'updates: {updates}')
+    # JSON serialization doesn't cope with sets
+    updates[ROLE_IDS] = list(updates[ROLE_IDS])
+    updates[TEAM_IDS] = list(updates[TEAM_IDS])
     if not dry_run:
         ac_api.update_a_user(**updates)
 
