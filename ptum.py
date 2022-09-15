@@ -556,8 +556,7 @@ def validate(ac_api, options):
 def create_team(ac_api, team_name, team_parent_id, dry_run):
     logging.debug(f'Creating team {team_name} under parent {team_parent_id}')
     if not dry_run:
-        team_id = ac_api.create_new_team(team_name, team_parent_id)
-        logging.debug(f'New team_id is {team_id}')
+        ac_api.create_new_team(team_name, team_parent_id)
 
 
 def delete_team(ac_api, team_id, dry_run):
