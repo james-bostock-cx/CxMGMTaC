@@ -545,7 +545,7 @@ def validate(ac_api, options):
     return model
 
 
-def create_team(self, ac_api, team_name, team_parent_id, dry_run):
+def create_team(ac_api, team_name, team_parent_id, dry_run):
     logging.debug(f'Creating team {team_name} under parent {team_parent_id}')
     if not dry_run:
         team_id = ac_api.create_new_team(team_name, team_parent_id)
