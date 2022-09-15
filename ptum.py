@@ -1,4 +1,5 @@
 import argparse
+from collections import namedtuple
 import copy
 import logging
 import os
@@ -35,6 +36,8 @@ USERS = 'users'
 # Global variables
 role_manager = None
 
+Property = namedtuple('Property', 'name type mandatory')
+
 class Team:
 
     def __init__(self, name, full_name, default_roles=[], team_id=None):
@@ -62,11 +65,11 @@ class Team:
     @staticmethod
     def from_dict(d):
         logging.debug(f'd: {d}')
-        type_check([
-            (d[NAME], str, NAME),
-            (d[FULL_NAME], str, FULL_NAME),
-            (d[DEFAULT_ROLES], list, DEFAULT_ROLES)
-        ])
+        type_check(d, [
+            Property(NAME, str, True),
+            Property(FULL_NAME, str, True),
+            Property(DEFAULT_ROLES, list, False)
+            ])
         team = Team(d[NAME], d[FULL_NAME], d[DEFAULT_ROLES])
         for ud in d[USERS]:
             team.add_user(User.from_dict(ud))
@@ -579,10 +582,13 @@ def update_user(ac_api, updates, dry_run):
         ac_api.update_a_user(**updates)
 
 
-def type_check(items):
-    for item in items:
-        if type(item[0]) != item[1]:
-            raise TypeError(f'Type of {item[2]} is {type(item[0])} (expected {item[1]})')
+def type_check(d, properties):
+    for property in properties:
+        if property.name in d:
+            if type(d[property.name]) != property.type:
+                raise TypeError(f'Type of {property.name} is {type(d[property.name])} (expected {property.type})')
+        elif property.mandatory:
+            raise ValueError(f'Property {property.name} is mandatory')
 
 
 def usage(ac_api, args):
