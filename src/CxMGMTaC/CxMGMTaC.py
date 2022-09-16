@@ -1,4 +1,7 @@
 """Manage projects, teams and users via config-as-code."""
+
+__version__ = "0.1.0"
+
 import argparse
 from collections import namedtuple
 import copy
