@@ -19,6 +19,10 @@ ALLOWED_IP_LIST = 'allowed_ip_list'
 AUTHENTICATION_PROVIDER_ID = 'authentication_provider_id'
 CELL_PHONE_NUMBER = 'cell_phone_number'
 COUNTRY = 'country'
+DEFAULT_ACTIVE = 'default_active'
+DEFAULT_ALLOWED_IP_LIST = 'default_allowed_ip_list'
+DEFAULT_AUTHENTICATION_PROVIDER_ID = 'default_authentication_provider_id'
+DEFAULT_LOCALE_ID = 'default_locale_id'
 DEFAULT_ROLES = 'default_roles'
 EMAIL = 'email'
 EXPIRATION_DATE = 'expiration_date'
@@ -44,12 +48,29 @@ Property = namedtuple('Property', 'name type mandatory')
 
 class Team:
 
-    def __init__(self, name, full_name, default_roles=[], team_id=None):
+    def __init__(self, name, full_name, default_active=None,
+                 default_allowed_ip_list=None,
+                 default_authentication_provider_id=None,
+                 default_locale_id=None, default_roles=None, users=None,
+                 team_id=None):
         self.team_id = team_id
         self.name = name
         self.full_name = full_name
-        self.default_roles = set(default_roles)
-        self.users = []
+        self.default_active = default_active
+        if default_allowed_ip_list:
+            self.default_allowed_ip_list = set(default_allowed_ip_list)
+        else:
+            self.default_allowed_ip_list = set()
+        self.default_authentication_provider_id = default_authentication_provider_id
+        self.default_locale_id = default_locale_id
+        if default_roles:
+            self.default_roles = set(default_roles)
+        else:
+            self.default_roles = set()
+        if users:
+            self.users = users
+        else:
+            self.users = list()
 
         if self.full_name.split('/')[-1] != self.name:
             raise ValueError(f'Last component of team full name ({self.full_name}) does not match team name ({self.name})')
@@ -58,16 +79,77 @@ class Team:
 
         self.users.append(user)
 
+    def normalize(self):
+        """For certain attributes, if all users have the same value,
+        replace them with a team-level default."""
+
+        logging.debug(f'Normalising {self.full_name}')
+        for attr in [ACTIVE, ALLOWED_IP_LIST,
+                     AUTHENTICATION_PROVIDER_ID, LOCALE_ID, ROLES]:
+            default = None
+            set_default = True
+            for user in self.users:
+                if default is not None and default != getattr(user, attr):
+                    set_default = False
+                    break
+                else:
+                    default = getattr(user, attr)
+            if set_default:
+                logging.debug(f'Setting default_{attr} to {default}')
+                setattr(self, f'default_{attr}', default)
+                for user in self.users:
+                    setattr(user, attr, None)
+
+    def denormalize(self):
+        """For each team-level default attribute, set the
+        corresponding attribute for all users that do not already have
+        a value for it."""
+
+        for user in self.users:
+            logging.debug(f'Setting default attributes for user {user.username} in team {self.full_name}')
+            for attr, attr_type in [(ACTIVE, bool), (ALLOWED_IP_LIST, list),
+                                    (AUTHENTICATION_PROVIDER_ID, int),
+                                    (LOCALE_ID, int), (ROLES, list)]:
+                attr_value = getattr(user, attr)
+                logging.debug(f'attr: {attr}: attr_value: {attr_value}')
+                if (attr_type == list and not attr_value) or attr_value is None:
+                    logging.debug(f'{attr} for {user.username} is None')
+                    default_value = getattr(self, f'default_{attr}')
+                    if default_value is None:
+                        errors = [
+                            MissingDefaultAttribute(user.username, self.full_name, attr)
+                            ]
+                        raise ModelvalidationError(errors)
+                    else:
+                        logging.debug(f'Setting {attr} for user {user.username} to {default_value}')
+                        setattr(user, attr, default_value)
+                else:
+                    logging.debug(f'{attr} for {user.username} is {getattr(user, attr)}')
+
+            user.validate()
+
     def to_dict(self):
+
         """Generate a dictionary representation of the team (which leads to
         prettier YAML output)."""
 
-        return {
+        self.normalize()
+
+        d = {
             NAME: self.name,
             FULL_NAME: self.full_name,
-            DEFAULT_ROLES: list(self.default_roles),
             USERS: [user.to_dict() for user in self.users]
         }
+
+        for attr, f in [(DEFAULT_ACTIVE, bool),
+                        (DEFAULT_ALLOWED_IP_LIST, list),
+                        (DEFAULT_AUTHENTICATION_PROVIDER_ID, int),
+                        (DEFAULT_LOCALE_ID, int),
+                        (DEFAULT_ROLES, list)]:
+            if getattr(self, attr):
+                d[attr] = f(getattr(self, attr))
+
+        return d
 
     @staticmethod
     def from_dict(d):
@@ -76,11 +158,18 @@ class Team:
         type_check(d, [
             Property(NAME, str, True),
             Property(FULL_NAME, str, True),
-            Property(DEFAULT_ROLES, list, False)
+            Property(DEFAULT_ACTIVE, bool, False),
+            Property(DEFAULT_ALLOWED_IP_LIST, list, False),
+            Property(DEFAULT_AUTHENTICATION_PROVIDER_ID, int, False),
+            Property(DEFAULT_ROLES, list, False),
             ])
-        team = Team(d[NAME], d[FULL_NAME], d[DEFAULT_ROLES])
-        for ud in d[USERS]:
+        users = d[USERS]
+        del d[USERS]
+        team = Team(**d)
+        for ud in users:
             team.add_user(User.from_dict(ud))
+
+        team.denormalize()
 
         return team
 
@@ -141,19 +230,25 @@ class Team:
 
     def __repr__(self):
 
-        return f'Team({self.name}, {self.full_name}, {self.default_roles})'
+        return 'Team({}, {}, {}, {}, {}, {}, {}, {}, {})'.format(self.name,
+                                                                 self.full_name,
+                                                                 self.default_active,
+                                                                 self.default_allowed_ip_list,
+                                                                 self.default_authentication_provider_id,
+                                                                 self.default_locale_id,
+                                                                 self.default_roles,
+                                                                 self.users.
+                                                                 self.team_id)
 
 
 class User:
 
     def __init__(self, username, email, first_name, last_name,
-                 authentication_provider_id, locale_id, roles=[],
+                 authentication_provider_id=None, locale_id=None, roles=None,
                  active=None, allowed_ip_list=None, cell_phone_number=None,
                  country=None, expiration_date=None, job_title=None,
                  other=None, phone_number=None, user_id=None):
 
-        if type(active) != bool:
-            raise TypeError(f'active is {active} (expected Boolean value)')
         self.user_id = user_id
         self.username = username
         self.email = email
@@ -161,9 +256,15 @@ class User:
         self.last_name = last_name
         self.authentication_provider_id = authentication_provider_id
         self.locale_id = locale_id
-        self.roles = set(roles)
+        if roles:
+            self.roles = set(roles)
+        else:
+            self.roles = set()
         self.active = active
-        self.allowed_ip_list = allowed_ip_list
+        if allowed_ip_list:
+            self.allowed_ip_list = allowed_ip_list
+        else:
+            self.allowed_ip_list = set()
         self.cell_phone_number = cell_phone_number
         self.country = country
         self.expiration_date = expiration_date
@@ -175,30 +276,32 @@ class User:
         """Generate a dictionary representation of the user (which leads to
         prettier YAML output)."""
 
-        return {
+        d = {
             USERNAME: self.username,
             EMAIL: self.email,
             FIRST_NAME: self.first_name,
             LAST_NAME: self.last_name,
-            AUTHENTICATION_PROVIDER_ID: self.authentication_provider_id,
-            LOCALE_ID: self.locale_id,
-            ROLES: list(self.roles),
-            ACTIVE: self.active,
-            ALLOWED_IP_LIST: self.allowed_ip_list,
-            CELL_PHONE_NUMBER: self.cell_phone_number,
-            COUNTRY: self.country,
-            EXPIRATION_DATE: self.expiration_date,
-            JOB_TITLE: self.job_title,
-            OTHER: self.other,
-            PHONE_NUMBER: self.phone_number
         }
+
+        for attr, f in [(ACTIVE, bool),
+                        (ALLOWED_IP_LIST, list),
+                        (AUTHENTICATION_PROVIDER_ID, int),
+                        (CELL_PHONE_NUMBER, str),
+                        (COUNTRY, str),
+                        (EXPIRATION_DATE, str),
+                        (JOB_TITLE, str),
+                        (OTHER, str),
+                        (PHONE_NUMBER, str),
+                        (ROLES, list)]:
+            if getattr(self, attr) is not None:
+                d[attr] = f(getattr(self, attr))
+
+        return d
 
     @staticmethod
     def from_dict(d):
         """Creates a User from a dictionary."""
         logging.debug(f'd: {d}')
-        roles = set(d.get(ROLES, []))
-        d[ROLES] = roles
         return User(**d)
 
     def validate_roles(self, errors, team_full_name):
@@ -211,12 +314,13 @@ class User:
 
     def get_updates(self, other, old_team_ids, new_team_ids):
         """Creates an dictionary with field updates to make this User match the other User."""
-        #logging.debug(f'Comparing {self} with {other}')
+        logging.debug(f'self : {self}')
+        logging.debug(f'other: {other}')
         updates = {}
         if self.username != other.username:
             raise valueError(f'Cannot generate updates for different users ({self.username} and {other.username})')
         if self.authentication_provider_id != other.authentication_provider_id:
-            raise ValueError('Cannot change authentication provider ID')
+            raise ValueError(f'Cannot change authentication provider ID (from {self.authentication_provider_id} to {other.authentication_provider_id}))')
 
         found_updates = False
         for attr in [ACTIVE, ALLOWED_IP_LIST, CELL_PHONE_NUMBER,
@@ -250,9 +354,20 @@ class User:
         else:
             return None
 
+    def validate(self):
+
+        logging.debug(f'Validating {self}')
+        for attr in ['active', 'authentication_provider_id', 'locale_id']:
+            if getattr(self, attr) is None:
+                raise ValueError(f'{self.username}: {attr} is None')
+
+    def __str__(self):
+
+        return f'User[username={self.username},email={self.email},first_name={self.first_name},last_name={self.last_name},authentication_provider={self.authentication_provider_id},locale_id={self.locale_id},roles={self.roles},active={self.active},allowed_ip_list={self.allowed_ip_list},cell_phone_number={self.cell_phone_number},country={self.country},expiration_date={self.expiration_date},job_title={self.job_title},other={self.other},phone_number={self.phone_number},user_id={self.user_id})'
+
     def __repr__(self):
 
-        return f'User({self.username}, {self.email}, {self.first_name}, {self.last_name}, {self.authentication_provider_id}, {self.locale_id}, {self.roles})'
+        return f'User({self.username}, {self.email}, {self.first_name}, {self.last_name}, {self.authentication_provider_id}, {self.locale_id}, {self.roles}, {self.active}, {self.allowed_ip_list, self.cell_phone_number, self.country, self.expiration_date, self.job_title, self.other, self.phone_number, self.user_id})'
 
 
 class Model:
@@ -313,7 +428,7 @@ class Model:
             if not first_user:
                 first_team = self.team_map[team_full_name]
                 first_user = user
-                first_roles = self.get_user_roles(first_user, first_team)
+                first_roles = user.roles
             else:
                 # By definition, the username values are the same
                 if user.email != first_user.email:
@@ -325,7 +440,7 @@ class Model:
                                                    first_user.email,
                                                    user.email))
                 team = self.team_map[team_full_name]
-                roles = self.get_user_roles(user, team)
+                roles = user.roles
                 if first_roles != roles:
                     logging.debug(f'{first_roles} != {roles}')
                     errors.append(InconsistentUser('roles',
@@ -334,16 +449,6 @@ class Model:
                                                    team_full_name,
                                                    first_roles,
                                                    roles))
-
-    def get_user_roles(self, user, team):
-        """Returns the specified user's roles."""
-        logging.debug(f'user: {user}, team: {team}')
-        if user.roles:
-            logging.debug(f'Using user\'s roles: {user.roles}')
-            return user.roles
-        else:
-            logging.debug(f'Using team\'s roles: {team.default_roles}')
-            return team.default_roles
 
     def apply_changes(self, ac_api, new_model, dry_run):
         """Applies the changes needed to make this model match the new model."""
@@ -514,6 +619,18 @@ class InvalidRole:
         return f'InvalidRole({self.team_full_name}, {self.username}, {self.role})'
 
 
+class MissingDefaultAttribute:
+
+    def __init__(self, username, team_full_name, attr):
+
+        self.username = username
+        self.team_full_name = team_full_name
+        self.attr = attr
+
+    def __repr__(self):
+
+        return f'MissingDefaultAttribute({self.username}, {self.team_full_name}, {self.attr})'
+
 class ModelValidationError(Exception):
 
     def __init__(self, errors):
@@ -540,15 +657,19 @@ def retrieve_teams(ac_api, options):
         for cx_user in cx_users:
             roles = [role_manager.role_name_from_id(r) for r in cx_user.role_ids]
             if cx_team.id in cx_user.team_ids:
-                team.add_user(User(cx_user.username, cx_user.email,
-                                   cx_user.first_name, cx_user.last_name,
-                                   cx_user.authentication_provider_id,
-                                   cx_user.locale_id, roles, cx_user.active,
-                                   cx_user.allowed_ip_list,
-                                   cx_user.cell_phone_number, cx_user.country,
-                                   cx_user.expiration_date, cx_user.job_title,
-                                   cx_user.other, cx_user.phone_number,
-                                   cx_user.id))
+                logging.debug(f'Adding user {cx_user.username} to team {cx_team.full_name}')
+                user = User(cx_user.username, cx_user.email,
+                            cx_user.first_name, cx_user.last_name,
+                            cx_user.authentication_provider_id,
+                            cx_user.locale_id, roles, cx_user.active,
+                            cx_user.allowed_ip_list,
+                            cx_user.cell_phone_number, cx_user.country,
+                            cx_user.expiration_date, cx_user.job_title,
+                            cx_user.other, cx_user.phone_number,
+                            cx_user.id)
+                user.validate()
+                team.add_user(user)
+        #team.normalize()
         teams.append(team)
 
     return teams
@@ -602,7 +723,7 @@ def create_user(ac_api, user, team_ids, dry_run):
                                user.last_name, user.email, user.phone_number,
                                user.cell_phone_number, user.job_title,
                                user.other, user.country, user.active,
-                               user.expiration_date, user.allowed_ip_list,
+                               user.expiration_date, list(user.allowed_ip_list),
                                user.locale_id)
 
 
@@ -618,6 +739,7 @@ def update_user(ac_api, updates, dry_run):
         raise ValueError(f'{USER_ID} missing from updates dictionary')
     logging.debug(f'updates: {updates}')
     # JSON serialization doesn't cope with sets
+    updates[ALLOWED_IP_LIST] = list(updates[ALLOWED_IP_LIST])
     updates[ROLE_IDS] = list(updates[ROLE_IDS])
     updates[TEAM_IDS] = list(updates[TEAM_IDS])
     if not dry_run:
