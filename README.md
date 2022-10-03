@@ -25,7 +25,7 @@ dependencies for offline installation. This file is called
 `CxMGMTaC-N.N.N-with-deps.zip`. When the contents of this file are
 extracted, the script’ dependencies, in the form of Python _wheel_
 files, will be in the `wheels` directory. These can be installed using
-the *pip* command which comes with Python itself. Only the
+the **pip3** command which comes with Python itself. Only the
 `CheckmarxPythonSDK` and `PyYAML` wheel need to be explicitly
 installed.
 
