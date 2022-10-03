@@ -48,6 +48,7 @@ role_manager = None
 
 Property = namedtuple('Property', 'name type mandatory')
 
+
 class Team:
 
     def __init__(self, name, full_name, default_active=None,
@@ -121,7 +122,7 @@ class Team:
                         errors = [
                             MissingDefaultAttribute(user.username, self.full_name, attr)
                             ]
-                        raise ModelvalidationError(errors)
+                        raise ModelValidationError(errors)
                     else:
                         logging.debug(f'Setting {attr} for user {user.username} to {default_value}')
                         setattr(user, attr, default_value)
@@ -320,7 +321,7 @@ class User:
         logging.debug(f'other: {other}')
         updates = {}
         if self.username != other.username:
-            raise valueError(f'Cannot generate updates for different users ({self.username} and {other.username})')
+            raise ValueError(f'Cannot generate updates for different users ({self.username} and {other.username})')
         if self.authentication_provider_name != other.authentication_provider_name:
             raise ValueError(f'Cannot change authentication provider name (from {self.authentication_provider_name} to {other.authentication_provider_name}))')
 
@@ -697,7 +698,7 @@ def retrieve_teams(ac_api, options):
                             cx_user.id)
                 user.validate()
                 team.add_user(user)
-        #team.normalize()
+
         teams.append(team)
 
     return teams
@@ -835,5 +836,6 @@ if __name__ == '__main__':
         args.func(ac_api, args)
     except Exception as e:
         logging.error(f'{args.func.__name__} failed: {e}', exc_info=True)
+        sys.exit(1)
 
     sys.exit(0)
