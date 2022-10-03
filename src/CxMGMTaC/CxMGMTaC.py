@@ -8,6 +8,7 @@ import copy
 import logging
 import os
 import pathlib
+import re
 import sys
 import yaml
 
@@ -186,7 +187,8 @@ class Team:
         """
         logging.debug(f'Team.save: full_name: {self.full_name}, dest_dir: {dest_dir}')
 
-        path = pathlib.Path(dest_dir) / pathlib.Path(f'./{self.full_name}.yml')
+        full_name = re.sub('\\s+', '-', self.full_name)
+        path = pathlib.Path(dest_dir) / pathlib.Path(f'./{full_name}.yml')
         logging.info(f'Saving team {self.name} to {path}')
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, 'w') as f:
