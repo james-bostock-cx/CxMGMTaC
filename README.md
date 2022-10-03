@@ -75,8 +75,8 @@ The following properties are mandatory:
 The following peoperties are optional:
 
 - default\_active
-- default\_allowed_ip_list
-- default\_authentication_provider_id
+- default\_allowed\_ip\_list
+- default\_authentication\_provider\_name
 - default\_locale_id
 - default\_roles
 - users
@@ -101,7 +101,7 @@ corresponding default properties:
 
 - active
 - allowed\_ip\_list
-- authentication\_provider\_id
+- authentication\_provider\_name
 - locale\_id
 - roles
 
@@ -120,13 +120,12 @@ Here is an example team file:
 
 ```
 default_active: true
-default_authentication_provider_id: 1
+default_authentication_provider_name: Application
 default_locale_id: 1
 full_name: /CxServer
 name: CxServer
 users:
-- authentication_provider_id: 1
-  email: admin@cx.au
+- email: admin@cx.au
   first_name: admin
   last_name: admin
   roles:

@@ -17,11 +17,12 @@ from CheckmarxPythonSDK.CxRestAPISDK import AccessControlAPI
 ACTIVE = 'active'
 ALLOWED_IP_LIST = 'allowed_ip_list'
 AUTHENTICATION_PROVIDER_ID = 'authentication_provider_id'
+AUTHENTICATION_PROVIDER_NAME = 'authentication_provider_name'
 CELL_PHONE_NUMBER = 'cell_phone_number'
 COUNTRY = 'country'
 DEFAULT_ACTIVE = 'default_active'
 DEFAULT_ALLOWED_IP_LIST = 'default_allowed_ip_list'
-DEFAULT_AUTHENTICATION_PROVIDER_ID = 'default_authentication_provider_id'
+DEFAULT_AUTHENTICATION_PROVIDER_NAME = 'default_authentication_provider_name'
 DEFAULT_LOCALE_ID = 'default_locale_id'
 DEFAULT_ROLES = 'default_roles'
 EMAIL = 'email'
@@ -42,6 +43,7 @@ USERNAME = 'username'
 USERS = 'users'
 
 # Global variables
+authentication_provider_manager = None
 role_manager = None
 
 Property = namedtuple('Property', 'name type mandatory')
@@ -50,7 +52,7 @@ class Team:
 
     def __init__(self, name, full_name, default_active=None,
                  default_allowed_ip_list=None,
-                 default_authentication_provider_id=None,
+                 default_authentication_provider_name=None,
                  default_locale_id=None, default_roles=None, users=None,
                  team_id=None):
         self.team_id = team_id
@@ -61,7 +63,7 @@ class Team:
             self.default_allowed_ip_list = set(default_allowed_ip_list)
         else:
             self.default_allowed_ip_list = set()
-        self.default_authentication_provider_id = default_authentication_provider_id
+        self.default_authentication_provider_name = default_authentication_provider_name
         self.default_locale_id = default_locale_id
         if default_roles:
             self.default_roles = set(default_roles)
@@ -85,7 +87,7 @@ class Team:
 
         logging.debug(f'Normalising {self.full_name}')
         for attr in [ACTIVE, ALLOWED_IP_LIST,
-                     AUTHENTICATION_PROVIDER_ID, LOCALE_ID, ROLES]:
+                     AUTHENTICATION_PROVIDER_NAME, LOCALE_ID, ROLES]:
             default = None
             set_default = True
             for user in self.users:
@@ -108,7 +110,7 @@ class Team:
         for user in self.users:
             logging.debug(f'Setting default attributes for user {user.username} in team {self.full_name}')
             for attr, attr_type in [(ACTIVE, bool), (ALLOWED_IP_LIST, list),
-                                    (AUTHENTICATION_PROVIDER_ID, int),
+                                    (AUTHENTICATION_PROVIDER_NAME, str),
                                     (LOCALE_ID, int), (ROLES, list)]:
                 attr_value = getattr(user, attr)
                 logging.debug(f'attr: {attr}: attr_value: {attr_value}')
@@ -143,7 +145,7 @@ class Team:
 
         for attr, f in [(DEFAULT_ACTIVE, bool),
                         (DEFAULT_ALLOWED_IP_LIST, list),
-                        (DEFAULT_AUTHENTICATION_PROVIDER_ID, int),
+                        (DEFAULT_AUTHENTICATION_PROVIDER_NAME, str),
                         (DEFAULT_LOCALE_ID, int),
                         (DEFAULT_ROLES, list)]:
             if getattr(self, attr):
@@ -160,7 +162,7 @@ class Team:
             Property(FULL_NAME, str, True),
             Property(DEFAULT_ACTIVE, bool, False),
             Property(DEFAULT_ALLOWED_IP_LIST, list, False),
-            Property(DEFAULT_AUTHENTICATION_PROVIDER_ID, int, False),
+            Property(DEFAULT_AUTHENTICATION_PROVIDER_NAME, str, False),
             Property(DEFAULT_ROLES, list, False),
             ])
         users = d[USERS]
@@ -234,7 +236,7 @@ class Team:
                                                                  self.full_name,
                                                                  self.default_active,
                                                                  self.default_allowed_ip_list,
-                                                                 self.default_authentication_provider_id,
+                                                                 self.default_authentication_provider_name,
                                                                  self.default_locale_id,
                                                                  self.default_roles,
                                                                  self.users.
@@ -244,7 +246,7 @@ class Team:
 class User:
 
     def __init__(self, username, email, first_name, last_name,
-                 authentication_provider_id=None, locale_id=None, roles=None,
+                 authentication_provider_name=None, locale_id=None, roles=None,
                  active=None, allowed_ip_list=None, cell_phone_number=None,
                  country=None, expiration_date=None, job_title=None,
                  other=None, phone_number=None, user_id=None):
@@ -254,7 +256,7 @@ class User:
         self.email = email
         self.first_name = first_name
         self.last_name = last_name
-        self.authentication_provider_id = authentication_provider_id
+        self.authentication_provider_name = authentication_provider_name
         self.locale_id = locale_id
         if roles:
             self.roles = set(roles)
@@ -285,7 +287,7 @@ class User:
 
         for attr, f in [(ACTIVE, bool),
                         (ALLOWED_IP_LIST, list),
-                        (AUTHENTICATION_PROVIDER_ID, int),
+                        (AUTHENTICATION_PROVIDER_NAME, str),
                         (CELL_PHONE_NUMBER, str),
                         (COUNTRY, str),
                         (EXPIRATION_DATE, str),
@@ -319,8 +321,8 @@ class User:
         updates = {}
         if self.username != other.username:
             raise valueError(f'Cannot generate updates for different users ({self.username} and {other.username})')
-        if self.authentication_provider_id != other.authentication_provider_id:
-            raise ValueError(f'Cannot change authentication provider ID (from {self.authentication_provider_id} to {other.authentication_provider_id}))')
+        if self.authentication_provider_name != other.authentication_provider_name:
+            raise ValueError(f'Cannot change authentication provider name (from {self.authentication_provider_name} to {other.authentication_provider_name}))')
 
         found_updates = False
         for attr in [ACTIVE, ALLOWED_IP_LIST, CELL_PHONE_NUMBER,
@@ -357,17 +359,20 @@ class User:
     def validate(self):
 
         logging.debug(f'Validating {self}')
-        for attr in ['active', 'authentication_provider_id', 'locale_id']:
+        for attr in ['active', 'authentication_provider_name', 'locale_id']:
             if getattr(self, attr) is None:
                 raise ValueError(f'{self.username}: {attr} is None')
 
+        # Make sure the authentication provider name is valid.
+        _ = authentication_provider_manager.id_from_name(self.authentication_provider_name)
+
     def __str__(self):
 
-        return f'User[username={self.username},email={self.email},first_name={self.first_name},last_name={self.last_name},authentication_provider={self.authentication_provider_id},locale_id={self.locale_id},roles={self.roles},active={self.active},allowed_ip_list={self.allowed_ip_list},cell_phone_number={self.cell_phone_number},country={self.country},expiration_date={self.expiration_date},job_title={self.job_title},other={self.other},phone_number={self.phone_number},user_id={self.user_id})'
+        return f'User[username={self.username},email={self.email},first_name={self.first_name},last_name={self.last_name},authentication_provider={self.authentication_provider_name},locale_id={self.locale_id},roles={self.roles},active={self.active},allowed_ip_list={self.allowed_ip_list},cell_phone_number={self.cell_phone_number},country={self.country},expiration_date={self.expiration_date},job_title={self.job_title},other={self.other},phone_number={self.phone_number},user_id={self.user_id})'
 
     def __repr__(self):
 
-        return f'User({self.username}, {self.email}, {self.first_name}, {self.last_name}, {self.authentication_provider_id}, {self.locale_id}, {self.roles}, {self.active}, {self.allowed_ip_list, self.cell_phone_number, self.country, self.expiration_date, self.job_title, self.other, self.phone_number, self.user_id})'
+        return f'User({self.username}, {self.email}, {self.first_name}, {self.last_name}, {self.authentication_provider_name}, {self.locale_id}, {self.roles}, {self.active}, {self.allowed_ip_list, self.cell_phone_number, self.country, self.expiration_date, self.job_title, self.other, self.phone_number, self.user_id})'
 
 
 class Model:
@@ -578,6 +583,28 @@ class RoleManager:
         return False
 
 
+class AuthenticationProviderManager:
+
+    def __init__(self, ac_api):
+
+        self.authentication_providers = ac_api.get_all_authentication_providers()
+
+    def name_from_id(self, provider_id):
+
+        for provider in self.authentication_providers:
+            if provider.id == provider_id:
+                return provider.name
+
+        raise ValueError(f'{provider_id}: invalid authentication provider ID')
+
+    def id_from_name(self, provider_name):
+
+        for provider in self.authentication_providers:
+            if provider.name == provider_name:
+                return provider.id
+
+        raise ValueError(f'{provider_name}: invalid authentication provider name')
+
 class InconsistentUser:
 
     def __init__(self, property, username, team_a, team_b, value_a, value_b):
@@ -658,9 +685,10 @@ def retrieve_teams(ac_api, options):
             roles = [role_manager.name_from_id(r) for r in cx_user.role_ids]
             if cx_team.id in cx_user.team_ids:
                 logging.debug(f'Adding user {cx_user.username} to team {cx_team.full_name}')
+                authentication_provider_name = authentication_provider_manager.name_from_id(cx_user.authentication_provider_id)
                 user = User(cx_user.username, cx_user.email,
                             cx_user.first_name, cx_user.last_name,
-                            cx_user.authentication_provider_id,
+                            authentication_provider_name,
                             cx_user.locale_id, roles, cx_user.active,
                             cx_user.allowed_ip_list,
                             cx_user.cell_phone_number, cx_user.country,
@@ -717,9 +745,10 @@ def delete_team(ac_api, team_id, dry_run):
 def create_user(ac_api, user, team_ids, dry_run):
     logging.info(f'Creating user {user.username}')
     if not dry_run:
+        authentication_provider_id = authentication_provider_manager.id_from_name(user.authentication_provider_name)
         role_ids = [role_manager.id_from_name(r) for r in user.roles]
         ac_api.create_new_user(user.username, '', role_ids, list(team_ids),
-                               user.authentication_provider_id, user.first_name,
+                               authentication_provider_id, user.first_name,
                                user.last_name, user.email, user.phone_number,
                                user.cell_phone_number, user.job_title,
                                user.other, user.country, user.active,
@@ -738,6 +767,10 @@ def update_user(ac_api, updates, dry_run):
     if USER_ID not in updates or not updates[USER_ID]:
         raise ValueError(f'{USER_ID} missing from updates dictionary')
     logging.debug(f'updates: {updates}')
+    # Note that it is not permitted to change the authentication
+    # provider so, for updates, we do not need to find the id that
+    # corresponds to the provider name.
+    #
     # JSON serialization doesn't cope with sets
     updates[ALLOWED_IP_LIST] = list(updates[ALLOWED_IP_LIST])
     updates[ROLE_IDS] = list(updates[ROLE_IDS])
@@ -797,6 +830,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=args.log_level, format=args.log_format)
 
     try:
+        authentication_provider_manager = AuthenticationProviderManager(ac_api)
         role_manager = RoleManager(ac_api)
         args.func(ac_api, args)
     except Exception as e:
