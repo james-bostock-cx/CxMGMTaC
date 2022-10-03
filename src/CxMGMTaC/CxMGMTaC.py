@@ -343,11 +343,11 @@ class User:
             updates[TEAM_IDS] = old_team_ids
 
         if self.roles != other.roles:
-            updates[ROLE_IDS] = [role_manager.role_id_from_name(r) for r in other.roles]
+            updates[ROLE_IDS] = [role_manager.id_from_name(r) for r in other.roles]
             logging.debug(f'User {self.username}: roles has changed from {self.roles} to {other.roles}')
             found_updates = True
         else:
-            updates[ROLE_IDS] = [role_manager.role_id_from_name(r) for r in self.roles]
+            updates[ROLE_IDS] = [role_manager.id_from_name(r) for r in self.roles]
 
         if found_updates:
             return updates
@@ -556,14 +556,14 @@ class RoleManager:
         self.all_roles = ac_api.get_all_roles()
         logging.debug(f'all_roles: {[r.name for r in self.all_roles]}')
 
-    def role_name_from_id(self, role_id):
+    def name_from_id(self, role_id):
         for role in self.all_roles:
             if role.id == role_id:
                 return role.name
 
         raise ValueError(f'{role_id}: invalid role ID')
 
-    def role_id_from_name(self, role_name):
+    def id_from_name(self, role_name):
         for role in self.all_roles:
             if role.name == role_name:
                 return role.id
@@ -655,7 +655,7 @@ def retrieve_teams(ac_api, options):
         logging.debug(f'cx_team: {cx_team}')
         team = Team(cx_team.name, cx_team.full_name, team_id=cx_team.id)
         for cx_user in cx_users:
-            roles = [role_manager.role_name_from_id(r) for r in cx_user.role_ids]
+            roles = [role_manager.name_from_id(r) for r in cx_user.role_ids]
             if cx_team.id in cx_user.team_ids:
                 logging.debug(f'Adding user {cx_user.username} to team {cx_team.full_name}')
                 user = User(cx_user.username, cx_user.email,
@@ -717,7 +717,7 @@ def delete_team(ac_api, team_id, dry_run):
 def create_user(ac_api, user, team_ids, dry_run):
     logging.info(f'Creating user {user.username}')
     if not dry_run:
-        role_ids = [role_manager.role_id_from_name(r) for r in user.roles]
+        role_ids = [role_manager.id_from_name(r) for r in user.roles]
         ac_api.create_new_user(user.username, '', role_ids, list(team_ids),
                                user.authentication_provider_id, user.first_name,
                                user.last_name, user.email, user.phone_number,
