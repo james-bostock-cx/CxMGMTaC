@@ -18,6 +18,25 @@ pip install -r requirements.txt
 
 This can, of course, be done in a virtual environment.
 
+## Offline Installation
+
+Each release includes a zip file that contains the CxMGMTaC script’s
+dependencies for offline installation. This file is called
+`CxMGMTaC-N.N.N-with-deps.zip`. When the contents of this file are
+extracted, the script’ dependencies, in the form of Python _wheel_
+files, will be in the `wheels` directory. These can be installed using
+the *pip* command which comes with Python itself. Only the
+`CheckmarxPythonSDK` and `PyYAML` wheel need to be explicitly
+installed.
+
+For example, assuming the zip file has been extracted under `/tmp`:
+
+```
+pip3 install CheckmarxPythonSDK --no-index --find-links /tmp/CxMGMTaC-N.N.N-with-deps/wheels
+pip3 install PyYAML --no-index --find-links /tmp/CxMGMTaC-N.N.N-with-deps/wheels
+```
+
+
 # Usage
 
 `CxMGMTaC.py` has three modes of operation:
