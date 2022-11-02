@@ -1,2 +1,2 @@
-CheckmarxPythonSDK==0.5.8
+CheckmarxPythonSDK==0.6.0
 PyYAML==6.0
