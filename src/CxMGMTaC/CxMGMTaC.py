@@ -150,7 +150,7 @@ class Team:
                         (DEFAULT_AUTHENTICATION_PROVIDER_NAME, str),
                         (DEFAULT_LOCALE_ID, int),
                         (DEFAULT_ROLES, list)]:
-            if getattr(self, attr):
+            if getattr(self, attr) or f is bool:
                 d[attr] = f(getattr(self, attr))
 
         return d
