@@ -48,6 +48,7 @@ authentication_provider_manager = None
 role_manager = None
 
 Property = namedtuple('Property', 'name type mandatory')
+UserMapKey = namedtuple('UserMapKey', 'username authentication_provider_name')
 
 
 class Team:
@@ -384,8 +385,8 @@ class Model:
     The model consists of two dictionaries:
 
     - team_map: a mapping from a team's full name to a corresponding Team instance.
-    - user_map: a mapping from a user's username to a mapping of team full names to
-                User instances.
+    - user_map: a mapping from a user's username and authentication provider name to
+                a mapping of team full names to User instances.
     """
 
     def __init__(self, teams):
@@ -398,9 +399,10 @@ class Model:
                 logging.error(f'Cannot have two teams with the same full name {team.full_name}')
             self.team_map[team.full_name] = team
             for user in team.users:
-                team_user_map = self.user_map.get(user.username, {})
+                key = UserMapKey(user.username, user.authentication_provider_name)
+                team_user_map = self.user_map.get(key, {})
                 team_user_map[team.full_name] = user
-                self.user_map[user.username] = team_user_map
+                self.user_map[key] = team_user_map
 
     def validate(self):
         """Validates the model."""
@@ -419,15 +421,15 @@ class Model:
 
     def validate_users(self, errors):
         """Makes sure that user definitions are consistent across teams."""
-        for username in self.user_map:
-            self.validate_user(errors, username, self.user_map[username])
+        for user_map_key, user_map_entry in self.user_map.items():
+            self.validate_user(errors, user_map_key, user_map_entry)
 
-    def validate_user(self, errors, username, team_user_map):
+    def validate_user(self, errors, user_map_key, team_user_map):
         """Validates the specified user."""
-        logging.debug(f'Validating user {username}')
+        logging.debug(f'Validating user {user_map_key.username} (authentication provider: {user_map_key.authentication_provider_name})')
 
         if len(team_user_map) == 1:
-            logging.debug(f'User {username} belongs to multiple teams')
+            logging.debug(f'User {user_map_key.username} belongs to multiple teams')
 
         first_team = None
         first_user = None
