@@ -470,9 +470,13 @@ class Model:
         """Applies team changes to make this model match the new model."""
         logging.info('Applying team changes')
         cur_team_names = set(self.team_map.keys())
+        logging.debug(f'Current teams: {cur_team_names}')
         new_team_names = set(new_model.team_map.keys())
+        logging.debug(f'New teams: {new_team_names}')
         teams_to_create = new_team_names - cur_team_names
+        logging.debug(f'Teams to create: {teams_to_create}')
         teams_to_delete = cur_team_names - new_team_names
+        logging.debug(f'Teams to delete: {teams_to_delete}')
 
         # Update ids of teams in new_model
         for team_full_name in new_model.team_map:
@@ -482,6 +486,7 @@ class Model:
         logging.debug('Creating new teams')
         team_map = copy.deepcopy(new_model.team_map)
         for team_full_name in sorted(teams_to_create):
+            logging.debug(f'Creating {team_full_name}')
             team = new_model.team_map[team_full_name]
             parent_full_name = get_team_parent_name(team_full_name)
             parent_id = team_map[parent_full_name].team_id
@@ -494,6 +499,7 @@ class Model:
 
         logging.debug('Deleting teams')
         for team_full_name in sorted(teams_to_delete, reverse=True):
+            logging.debug(f'Deleting {team_full_name}')
             delete_team(ac_api, self.team_map[team_full_name].team_id, dry_run)
 
         # Update team_id values of existing teams in the new model
@@ -508,18 +514,23 @@ class Model:
         logging.info('Applying user changes')
 
         cur_users = set(self.user_map.keys())
+        logging.debug(f'Current users: {cur_users}')
         new_users = set(new_model.user_map.keys())
+        logging.debug(f'New users')
         users_to_create = new_users - cur_users
+        logging.debug(f'Users to create: {users_to_create}')
         users_to_delete = cur_users - new_users
+        logging.debug(f'Users to delete: {users_to_delete}')
 
         logging.debug('Creating new users')
         for username in sorted(users_to_create):
-            # TODO! role_ids and team_ids
+            logging,debug(f'Creating {username}')
             create_user(ac_api, new_model.get_user_by_username(username),
                         new_model.get_user_team_ids(username), dry_run)
 
         logging.debug('Deleting users')
         for username in sorted(users_to_delete):
+            logging,debug(f'Deleting {username}')
             delete_user(ac_api, self.get_user_by_username(username), dry_run)
 
         # Update existing users
