@@ -524,13 +524,13 @@ class Model:
 
         logging.debug('Creating new users')
         for username in sorted(users_to_create):
-            logging,debug(f'Creating {username}')
+            logging.debug(f'Creating {username}')
             create_user(ac_api, new_model.get_user_by_username(username),
                         new_model.get_user_team_ids(username), dry_run)
 
         logging.debug('Deleting users')
         for username in sorted(users_to_delete):
-            logging,debug(f'Deleting {username}')
+            logging.debug(f'Deleting {username}')
             delete_user(ac_api, self.get_user_by_username(username), dry_run)
 
         # Update existing users
