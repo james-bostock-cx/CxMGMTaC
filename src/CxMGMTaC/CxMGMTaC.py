@@ -523,46 +523,46 @@ class Model:
         logging.debug(f'Users to delete: {users_to_delete}')
 
         logging.debug('Creating new users')
-        for username in sorted(users_to_create):
-            logging.debug(f'Creating {username}')
-            create_user(ac_api, new_model.get_user_by_username(username),
-                        new_model.get_user_team_ids(username), dry_run)
+        for userkey in sorted(users_to_create):
+            logging.debug(f'Creating {userkey.username}')
+            create_user(ac_api, new_model.get_user_by_userkey(userkey),
+                        new_model.get_user_team_ids(userkey), dry_run)
 
         logging.debug('Deleting users')
-        for username in sorted(users_to_delete):
-            logging.debug(f'Deleting {username}')
-            delete_user(ac_api, self.get_user_by_username(username), dry_run)
+        for userkey in sorted(users_to_delete):
+            logging.debug(f'Deleting {userkey.username}')
+            delete_user(ac_api, self.get_user_by_userkey(userkey), dry_run)
 
         # Update existing users
-        for username in cur_users & new_users:
-            old_user = self.get_user_by_username(username)
-            old_team_ids = self.get_user_team_ids(username)
-            new_user = new_model.get_user_by_username(username)
-            new_team_ids = new_model.get_user_team_ids(username)
+        for userkey in cur_users & new_users:
+            old_user = self.get_user_by_userkey(userkey)
+            old_team_ids = self.get_user_team_ids(userkey)
+            new_user = new_model.get_user_by_userkey(userkey)
+            new_team_ids = new_model.get_user_team_ids(userkey)
 
             updates = old_user.get_updates(new_user, old_team_ids, new_team_ids)
             if updates:
                 logging.debug(f'Setting updates[{USER_ID}] to {old_user.user_id}')
                 updates[USER_ID] = old_user.user_id
-                logging.debug(f'updates for {username}: {updates}')
+                logging.debug(f'updates for {userkey.username}: {updates}')
                 update_user(ac_api, updates, dry_run)
 
-    def get_user_by_username(self, username):
-        """Given a username, return the corresponding user object.
+    def get_user_by_userkey(self, userkey):
+        """Given a userkey, return the corresponding user object.
 
         In a valid configuration, if a user belongs to multiple teams,
         the user's details should be identical in each team so it
         doesn't matter which one we return.
 
         """
-        team_map = self.user_map[username]
+        team_map = self.user_map[userkey]
         for user in team_map.values():
             return user
 
-    def get_user_team_ids(self, username):
+    def get_user_team_ids(self, userkey):
         """Returns a set of team ids of which the specified user is a member."""
         team_ids = []
-        for team_full_name in self.user_map[username]:
+        for team_full_name in self.user_map[userkey]:
             team = self.team_map[team_full_name]
             if not team or not team.team_id:
                 raise RuntimeError(f'Cannot determine team ID for {team_full_name}')
