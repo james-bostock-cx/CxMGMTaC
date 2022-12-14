@@ -812,7 +812,7 @@ def usage(ac_api, args):
 if __name__ == '__main__':
 
     ac_api = AccessControlAPI()
-    parser = argparse.ArgumentParser(prog='PTUM')
+    parser = argparse.ArgumentParser(prog='CxMGMTaC')
     parser.add_argument('--log-format', type=str,
                         default='%(asctime)s | %(levelname)s | %(funcName)s: %(message)s',
                         help='The log format')
