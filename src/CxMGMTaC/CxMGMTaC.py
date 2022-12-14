@@ -380,7 +380,7 @@ class User:
 
 
 class Model:
-    """A model of teams an users.
+    """A model of teams and users.
 
     The model consists of two dictionaries:
 
