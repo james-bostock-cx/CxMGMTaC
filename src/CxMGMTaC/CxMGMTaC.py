@@ -1023,7 +1023,8 @@ if __name__ == '__main__':
     if args.log_config:
         logging.config.fileConfig(args.log_config)
     else:
-        logging.basicConfig(level=args.log_level, format=args.log_format)
+        logging.basicConfig(level=args.log_level, format=args.log_format,
+                            force=True)
 
     try:
         args.func(args)
