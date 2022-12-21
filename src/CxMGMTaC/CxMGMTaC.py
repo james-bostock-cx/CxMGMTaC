@@ -516,7 +516,7 @@ class Model:
                 logging.debug(f'Setting team_id of {team.full_name} to {team.team_id}')
                 self.team_map[team.full_name].team_id = team.team_id
             else:
-                logging.debug(f'{team.team_full_nam} not in team_map')
+                logging.debug(f'{team.full_name} not in team_map')
         self.update_user_team_ids_map()
 
     def validate(self):
