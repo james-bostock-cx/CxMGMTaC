@@ -1,0 +1,10 @@
+default_roles:
+  - SAST Scanner
+users:
+  - authentication_provider_name: Application
+    expiration_date: '2025-11-03T01:20:40.538Z'
+    email: test.user@local.domain
+    first_name: Test
+    last_name: User
+    locale_id: 1
+    username: testuser

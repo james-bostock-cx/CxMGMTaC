@@ -1,0 +1,298 @@
+[
+    {
+        "id": 2006,
+        "userName": "admin",
+        "lastLoginDate": "2022-12-15T03:37:57.0653118Z",
+        "roleIds": [
+            1,
+            2,
+            6,
+            10,
+            13,
+            1014
+        ],
+        "teamIds": [
+            1,
+            2,
+            3,
+            4,
+            1002
+        ],
+        "authenticationProviderId": 1,
+        "creationDate": "2020-10-20T03:46:46.5968134Z",
+        "firstName": "admin",
+        "lastName": "admin",
+        "email": "admin@cx.au",
+        "phoneNumber": null,
+        "cellPhoneNumber": null,
+        "jobTitle": null,
+        "other": null,
+        "country": null,
+        "active": true,
+        "expirationDate": null,
+        "allowedIpList": [],
+        "localeId": 1
+    },
+    {
+        "id": 3008,
+        "userName": "vader",
+        "lastLoginDate": "2022-08-10T23:39:43.3362474Z",
+        "roleIds": [
+            4,
+            5,
+            6
+        ],
+        "teamIds": [
+            3
+        ],
+        "authenticationProviderId": 4,
+        "creationDate": "2020-12-02T03:24:01.1797394Z",
+        "firstName": "Anakin",
+        "lastName": "Skywalker",
+        "email": "vader@org",
+        "phoneNumber": null,
+        "cellPhoneNumber": null,
+        "jobTitle": null,
+        "other": null,
+        "country": null,
+        "active": true,
+        "expirationDate": null,
+        "allowedIpList": [],
+        "localeId": 1
+    },
+    {
+        "id": 3009,
+        "userName": "StarWarsSVC",
+        "lastLoginDate": "2021-03-25T00:22:05.6577482Z",
+        "roleIds": [
+            4,
+            5,
+            6
+        ],
+        "teamIds": [
+            3
+        ],
+        "authenticationProviderId": 1003,
+        "creationDate": "2020-12-02T04:09:23.7719417Z",
+        "firstName": "StarWarsSVC",
+        "lastName": "StarWarsSVC",
+        "email": "StarWarsSVC@org",
+        "phoneNumber": null,
+        "cellPhoneNumber": null,
+        "jobTitle": null,
+        "other": null,
+        "country": null,
+        "active": true,
+        "expirationDate": null,
+        "allowedIpList": [],
+        "localeId": 1
+    },
+    {
+        "id": 3010,
+        "userName": "TestSast@nirweinbergoutlook.onmicrosoft.com",
+        "lastLoginDate": "2021-09-30T10:21:20.0846611Z",
+        "roleIds": [
+            4
+        ],
+        "teamIds": [
+            3,
+            4
+        ],
+        "authenticationProviderId": 1004,
+        "creationDate": "2021-09-30T09:54:03.1037873Z",
+        "firstName": "Test",
+        "lastName": "Sast",
+        "email": "test@cx.au",
+        "phoneNumber": null,
+        "cellPhoneNumber": null,
+        "jobTitle": null,
+        "other": null,
+        "country": null,
+        "active": true,
+        "expirationDate": null,
+        "allowedIpList": [],
+        "localeId": 1
+    },
+    {
+        "id": 3011,
+        "userName": "nir.weinberg_outlook.com#EXT#@nirweinbergoutlook.onmicrosoft.com",
+        "lastLoginDate": "2022-03-21T01:10:25.5487913Z",
+        "roleIds": [
+            4
+        ],
+        "teamIds": [
+            3,
+            4
+        ],
+        "authenticationProviderId": 1004,
+        "creationDate": "2021-09-30T10:22:22.4719195Z",
+        "firstName": "Nir",
+        "lastName": "Weinberg",
+        "email": "nir.weinberg@outlook.com",
+        "phoneNumber": null,
+        "cellPhoneNumber": null,
+        "jobTitle": null,
+        "other": null,
+        "country": null,
+        "active": true,
+        "expirationDate": null,
+        "allowedIpList": [],
+        "localeId": 1
+    },
+    {
+        "id": 5010,
+        "userName": "test-new",
+        "lastLoginDate": "2022-08-22T04:07:13.2683718Z",
+        "roleIds": [
+            1013,
+            1014
+        ],
+        "teamIds": [
+            4,
+            1002,
+            2002,
+            2011
+        ],
+        "authenticationProviderId": 1,
+        "creationDate": "2022-03-04T03:30:46.1313825Z",
+        "firstName": "test",
+        "lastName": "test",
+        "email": "test-new@cx.au",
+        "phoneNumber": null,
+        "cellPhoneNumber": null,
+        "jobTitle": null,
+        "other": null,
+        "country": null,
+        "active": true,
+        "expirationDate": null,
+        "allowedIpList": [],
+        "localeId": 1
+    },
+    {
+        "id": 5011,
+        "userName": "reportinguser",
+        "lastLoginDate": "2022-08-10T23:56:44.5472493Z",
+        "roleIds": [
+            4,
+            1014
+        ],
+        "teamIds": [
+            3
+        ],
+        "authenticationProviderId": 1,
+        "creationDate": "2022-08-10T23:50:24.9948491Z",
+        "firstName": "test",
+        "lastName": "reporting",
+        "email": "report@cx.au",
+        "phoneNumber": null,
+        "cellPhoneNumber": null,
+        "jobTitle": null,
+        "other": null,
+        "country": null,
+        "active": true,
+        "expirationDate": null,
+        "allowedIpList": [],
+        "localeId": 1
+    },
+    {
+        "id": 10012,
+        "userName": "ptum",
+        "lastLoginDate": "2022-09-29T06:04:35.3157393Z",
+        "roleIds": [
+            2
+        ],
+        "teamIds": [
+            1
+        ],
+        "authenticationProviderId": 1,
+        "creationDate": "2022-09-09T00:09:36.5555735Z",
+        "firstName": "ptum",
+        "lastName": "ptum",
+        "email": "ptum.ptum@local.domain",
+        "phoneNumber": null,
+        "cellPhoneNumber": null,
+        "jobTitle": "whipping rooster",
+        "other": null,
+        "country": null,
+        "active": true,
+        "expirationDate": null,
+        "allowedIpList": [],
+        "localeId": 1
+    },
+    {
+        "id": 11014,
+        "userName": "ptum2",
+        "lastLoginDate": null,
+        "roleIds": [
+            2
+        ],
+        "teamIds": [
+            1
+        ],
+        "authenticationProviderId": 4,
+        "creationDate": "2022-09-15T00:34:06.5251425Z",
+        "firstName": "ptum2",
+        "lastName": "ptum2",
+        "email": "ptum2@local.domain",
+        "phoneNumber": null,
+        "cellPhoneNumber": null,
+        "jobTitle": null,
+        "other": null,
+        "country": "Australia",
+        "active": true,
+        "expirationDate": null,
+        "allowedIpList": [],
+        "localeId": 1
+    },
+    {
+        "id": 11015,
+        "userName": "test-new2",
+        "lastLoginDate": null,
+        "roleIds": [
+            5,
+            1014
+        ],
+        "teamIds": [
+            2008
+        ],
+        "authenticationProviderId": 4,
+        "creationDate": "2022-09-15T04:51:40.2457818Z",
+        "firstName": "test",
+        "lastName": "new2",
+        "email": "test-new2@cx.au",
+        "phoneNumber": "",
+        "cellPhoneNumber": "",
+        "jobTitle": "",
+        "other": "",
+        "country": "",
+        "active": false,
+        "expirationDate": null,
+        "allowedIpList": [],
+        "localeId": 1
+    },
+    {
+        "id": 11019,
+        "userName": "ptum2",
+        "lastLoginDate": null,
+        "roleIds": [
+            1013
+        ],
+        "teamIds": [
+            2011
+        ],
+        "authenticationProviderId": 1,
+        "creationDate": "2022-11-03T01:21:59.6187249Z",
+        "firstName": "Ptum",
+        "lastName": "Ptum",
+        "email": "ptum2-2@local.domain",
+        "phoneNumber": "",
+        "cellPhoneNumber": "",
+        "jobTitle": "",
+        "other": "",
+        "country": "",
+        "active": true,
+        "expirationDate": "2025-11-03T01:20:40.538Z",
+        "allowedIpList": [],
+        "localeId": 1
+    }
+]

@@ -1,11 +1,15 @@
-"""Manage projects, teams and users via config-as-code."""
+"""Manage projects, teams and users via config-as-code.
 
-__version__ = "0.2.2"
+Note: currently, only management of teams and users is supported.
+"""
+
+__version__ = "1.0.0-SNAPSHOT"
 
 import argparse
 from collections import namedtuple
 import copy
 import logging
+import logging.config
 import os
 import pathlib
 import re
@@ -43,35 +47,32 @@ USER_ID = 'user_id'
 USERNAME = 'username'
 USERS = 'users'
 
-# Global variables
-authentication_provider_manager = None
-role_manager = None
+# Other constants
+DEFAULT_LOG_FORMAT = '%(asctime)s | %(levelname)s | %(funcName)s: %(message)s'
 
 Property = namedtuple('Property', 'name type mandatory')
-UserMapKey = namedtuple('UserMapKey', 'username authentication_provider_name')
 
 
 class Team:
+    """An Access Control team.
 
-    def __init__(self, name, full_name, default_active=None,
-                 default_allowed_ip_list=None,
-                 default_authentication_provider_name=None,
-                 default_locale_id=None, default_roles=None, users=None,
+    Unlike teams in Access Control, the Team class includes an
+    explicit list of user references (in the data model exposed by the
+    Access Control API, a User has a property containing the
+    identifiers of the teams to which it belongs).
+
+    """
+
+    attrs = [
+        Property(NAME, str, True),
+        Property(FULL_NAME, str, True)
+    ]
+
+    def __init__(self, name, full_name, users=None,
                  team_id=None):
         self.team_id = team_id
         self.name = name
         self.full_name = full_name
-        self.default_active = default_active
-        if default_allowed_ip_list:
-            self.default_allowed_ip_list = set(default_allowed_ip_list)
-        else:
-            self.default_allowed_ip_list = set()
-        self.default_authentication_provider_name = default_authentication_provider_name
-        self.default_locale_id = default_locale_id
-        if default_roles:
-            self.default_roles = set(default_roles)
-        else:
-            self.default_roles = set()
         if users:
             self.users = users
         else:
@@ -81,64 +82,12 @@ class Team:
             raise ValueError(f'Last component of team full name ({self.full_name}) does not match team name ({self.name})')
 
     def add_user(self, user):
-
+        """Adds the specified user to the team's list of users."""
         self.users.append(user)
 
-    def normalize(self):
-        """For certain attributes, if all users have the same value,
-        replace them with a team-level default."""
-
-        logging.debug(f'Normalising {self.full_name}')
-        for attr in [ACTIVE, ALLOWED_IP_LIST,
-                     AUTHENTICATION_PROVIDER_NAME, LOCALE_ID, ROLES]:
-            default = None
-            set_default = True
-            for user in self.users:
-                if default is not None and default != getattr(user, attr):
-                    set_default = False
-                    break
-                else:
-                    default = getattr(user, attr)
-            if set_default:
-                logging.debug(f'Setting default_{attr} to {default}')
-                setattr(self, f'default_{attr}', default)
-                for user in self.users:
-                    setattr(user, attr, None)
-
-    def denormalize(self):
-        """For each team-level default attribute, set the
-        corresponding attribute for all users that do not already have
-        a value for it."""
-
-        for user in self.users:
-            logging.debug(f'Setting default attributes for user {user.username} in team {self.full_name}')
-            for attr, attr_type in [(ACTIVE, bool), (ALLOWED_IP_LIST, list),
-                                    (AUTHENTICATION_PROVIDER_NAME, str),
-                                    (LOCALE_ID, int), (ROLES, list)]:
-                attr_value = getattr(user, attr)
-                logging.debug(f'attr: {attr}: attr_value: {attr_value}')
-                if (attr_type == list and not attr_value) or attr_value is None:
-                    logging.debug(f'{attr} for {user.username} is None')
-                    default_value = getattr(self, f'default_{attr}')
-                    if default_value is None:
-                        errors = [
-                            MissingDefaultAttribute(user.username, self.full_name, attr)
-                            ]
-                        raise ModelValidationError(errors)
-                    else:
-                        logging.debug(f'Setting {attr} for user {user.username} to {default_value}')
-                        setattr(user, attr, default_value)
-                else:
-                    logging.debug(f'{attr} for {user.username} is {getattr(user, attr)}')
-
-            user.validate()
-
     def to_dict(self):
-
         """Generate a dictionary representation of the team (which leads to
         prettier YAML output)."""
-
-        self.normalize()
 
         d = {
             NAME: self.name,
@@ -146,40 +95,23 @@ class Team:
             USERS: [user.to_dict() for user in self.users]
         }
 
-        for attr, f in [(DEFAULT_ACTIVE, bool),
-                        (DEFAULT_ALLOWED_IP_LIST, list),
-                        (DEFAULT_AUTHENTICATION_PROVIDER_NAME, str),
-                        (DEFAULT_LOCALE_ID, int),
-                        (DEFAULT_ROLES, list)]:
-            if getattr(self, attr) or f is bool:
-                d[attr] = f(getattr(self, attr))
-
         return d
 
     @staticmethod
     def from_dict(d):
         """Creates a Team from a dictionary."""
         logging.debug(f'd: {d}')
-        type_check(d, [
-            Property(NAME, str, True),
-            Property(FULL_NAME, str, True),
-            Property(DEFAULT_ACTIVE, bool, False),
-            Property(DEFAULT_ALLOWED_IP_LIST, list, False),
-            Property(DEFAULT_AUTHENTICATION_PROVIDER_NAME, str, False),
-            Property(DEFAULT_ROLES, list, False),
-            ])
+        type_check(d, Team.attrs)
         users = d[USERS]
         del d[USERS]
         team = Team(**d)
         for ud in users:
-            team.add_user(User.from_dict(ud))
-
-        team.denormalize()
+            team.add_user(UserReference.from_dict(ud))
 
         return team
 
     def save(self, dest_dir="."):
-        """Save the team to a file in the specified directory.
+        """Saves the team to a file in the specified directory.
 
         The filename is the team's name, with a ".yml" suffix. The
         file is created in a directory whose path reflects the team's
@@ -198,7 +130,7 @@ class Team:
 
     @staticmethod
     def load(filename):
-        """Loads a team from a YAM file."""
+        """Loads a team from a YAML file."""
         logging.debug(f'Loading team from {filename}')
         with open(filename, 'r') as f:
             data = yaml.load(f, Loader=yaml.CLoader)
@@ -223,34 +155,129 @@ class Team:
 
         return teams
 
-    def validate_default_roles(self, errors):
-        """Validates the team's default roles."""
-        logging.debug(f'Validating default roles for {self.full_name}')
-        for role in self.default_roles:
-            if not role_manager.valid_role_by_name(role):
-                logging.error(f'default role {role} for team {self.full_name} is not a valid role')
-                errors.append(InvalidDefaultRole(self.full_name, role))
-
     def __str__(self):
-        return f'Team[name={self.name},full_name={self.full_name}'
+        """Returns a string representation of the team."""
+        if self.team_id is not None:
+            return f'Team[name={self.name},full_name={self.full_name},team_id={self.team_id}]'
+        else:
+            return f'Team[name={self.name},full_name={self.full_name}]'
 
     def __repr__(self):
+        """Returns a string representation of the team."""
+        return f'Team({self.name}, {self.full_name}, {self.users}, {self.team_id})'
 
-        return 'Team({}, {}, {}, {}, {}, {}, {}, {}, {})'.format(self.name,
-                                                                 self.full_name,
-                                                                 self.default_active,
-                                                                 self.default_allowed_ip_list,
-                                                                 self.default_authentication_provider_name,
-                                                                 self.default_locale_id,
-                                                                 self.default_roles,
-                                                                 self.users.
-                                                                 self.team_id)
+
+class Users:
+    """A collection of users.
+
+    Having this as a distinct class allows us to specify default
+    values for certain user properties, allowing the files on disk to
+    be more concise.
+
+    """
+
+    def __init__(self, users, default_active=None,
+                 default_authentication_provider_name=None,
+                 default_locale_id=None, default_roles=None):
+
+        self.users = users or []
+        self.default_active = default_active
+        self.default_authentication_provider_name = default_authentication_provider_name
+        self.default_locale_id = default_locale_id
+        self.default_roles = default_roles
+
+    @staticmethod
+    def load(filename):
+        """Loads a collection of users from the specified file."""
+        with open(filename, 'r') as f:
+            data = yaml.load(f, Loader=yaml.CLoader)
+            users = [Users.user_from_dict(d, data) for d in data[USERS]]
+            del data[USERS]
+            return Users(users, **data)
+
+    @staticmethod
+    def user_from_dict(d, data):
+        """Creates a user from the specified dictionary.
+
+        Any properties which are lacking from the dictionary, but for
+        which there is a default value, are added.
+
+        """
+        for default, actual in [
+                (DEFAULT_ACTIVE, ACTIVE),
+                (DEFAULT_AUTHENTICATION_PROVIDER_NAME,
+                 AUTHENTICATION_PROVIDER_NAME),
+                (DEFAULT_LOCALE_ID, LOCALE_ID),
+                (DEFAULT_ROLES, ROLES)]:
+            if actual not in d and default in data:
+                d[actual] = data[default]
+
+        return User(**d)
+
+    def to_dict(self):
+        """Generates a dictionary representation of the Users object
+        (which leads to prettier YAML output).
+
+        """
+        d = {
+            USERS: [user.to_dict() for user in self.users]
+        }
+
+        for attr in [DEFAULT_ACTIVE, DEFAULT_AUTHENTICATION_PROVIDER_NAME,
+                     DEFAULT_LOCALE_ID, DEFAULT_ROLES]:
+            if hasattr(self, attr):
+                d[attr] = getattr(self, attr)
+
+        return d
+
+    def save(self, dir_path):
+        """Saves the user collection to the specified directory.
+
+        The users collection is always saved to a file named users.yml.
+        """
+        users_path = dir_path / pathlib.Path('users.yml')
+        with open(users_path, 'w') as f:
+            print(yaml.dump(self.to_dict(), Dumper=yaml.CDumper),
+                  file=f)
+        pass
+
+    def append(self, user):
+        """Adds a user to the list of users."""
+        self.users.append(user)
+
+    def __len__(self):
+        """Returns the number of users."""
+        return len(self.users)
 
 
 class User:
+    """An Access Control user.
 
-    def __init__(self, username, email, first_name, last_name,
-                 authentication_provider_name=None, locale_id=None, roles=None,
+    For the convenience of people managing the YAML files containing
+    user data, authentication provider and role names are used instead
+    of their identifiers.
+
+    """
+
+    attrs = [Property(ACTIVE, bool, True),
+             Property(ALLOWED_IP_LIST, list, False),
+             Property(AUTHENTICATION_PROVIDER_NAME, str, True),
+             Property(CELL_PHONE_NUMBER, str, False),
+             Property(COUNTRY, str, False),
+             Property(EMAIL, str, True),
+             Property(EXPIRATION_DATE, str, False),
+             Property(FIRST_NAME, str, True),
+             Property(JOB_TITLE, str, False),
+             Property(LAST_NAME, str, True),
+             Property(LOCALE_ID, int, True),
+             Property(OTHER, str, False),
+             Property(PHONE_NUMBER, str, False),
+             Property(ROLES, list, False),
+             Property(USERNAME, str, True)
+            ]
+    
+    def __init__(self, username, authentication_provider_name, email=None,
+                 first_name=None, last_name=None, locale_id=None, roles=None,
                  active=None, allowed_ip_list=None, cell_phone_number=None,
                  country=None, expiration_date=None, job_title=None,
                  other=None, phone_number=None, user_id=None):
@@ -279,27 +306,12 @@ class User:
         self.phone_number = phone_number
 
     def to_dict(self):
-        """Generate a dictionary representation of the user (which leads to
+        """Generates a dictionary representation of the user (which leads to
         prettier YAML output)."""
 
-        d = {
-            USERNAME: self.username,
-            EMAIL: self.email,
-            FIRST_NAME: self.first_name,
-            LAST_NAME: self.last_name,
-        }
-
-        for attr, f in [(ACTIVE, bool),
-                        (ALLOWED_IP_LIST, list),
-                        (AUTHENTICATION_PROVIDER_NAME, str),
-                        (CELL_PHONE_NUMBER, str),
-                        (COUNTRY, str),
-                        (EXPIRATION_DATE, str),
-                        (JOB_TITLE, str),
-                        (OTHER, str),
-                        (PHONE_NUMBER, str),
-                        (ROLES, list)]:
-            if getattr(self, attr) is not None:
+        d = {}
+        for attr, f, mandatory in self.attrs:
+            if f is bool or getattr(self, attr):
                 d[attr] = f(getattr(self, attr))
 
         return d
@@ -310,13 +322,13 @@ class User:
         logging.debug(f'd: {d}')
         return User(**d)
 
-    def validate_roles(self, errors, team_full_name):
+    def validate_roles(self, errors):
         """Validates the user's roles."""
         logging.debug(f'Validating roles of user {self.username}')
         for role in self.roles:
-            if not role_manager.valid_role_by_name(role):
-                logging.error(f'Role {role} for user {self.username} in team {team_full_name} is not a valid role')
-                errors.append(InvalidRole(team_full_name, self.username, role))
+            if not role_manager.valid_name(role):
+                logging.error(f'Role {role} for user {self.username} is not a valid role')
+                errors.append(InvalidRole(self.username, role))
 
     def get_updates(self, other, old_team_ids, new_team_ids):
         """Creates an dictionary with field updates to make this User match the other User."""
@@ -329,20 +341,22 @@ class User:
             raise ValueError(f'Cannot change authentication provider name (from {self.authentication_provider_name} to {other.authentication_provider_name}))')
 
         found_updates = False
-        for attr in [ACTIVE, ALLOWED_IP_LIST, CELL_PHONE_NUMBER,
-                      COUNTRY, EMAIL, EXPIRATION_DATE, FIRST_NAME,
-                      JOB_TITLE, LAST_NAME, LOCALE_ID, OTHER,
-                      PHONE_NUMBER]:
+        for attr, f, mandatory in self.attrs:
 
-            if hasattr(other, attr) and (getattr(self, attr) != getattr(other, attr)):
+            if attr in [AUTHENTICATION_PROVIDER_NAME, ROLES, USERNAME]:
+                continue
+
+            if hasattr(other, attr) and not attr_equal(getattr(self, attr), getattr(other, attr), f):
                 updates[attr] = getattr(other, attr)
                 logging.debug(f'User {self.username}: {attr} has changed from {getattr(self, attr)} to {getattr(other, attr)}')
                 found_updates = True
             else:
                 updates[attr] = getattr(self, attr)
 
+        logging.info(f'old_team_ids: {old_team_ids}, new_team_ids: {new_team_ids}')
         if old_team_ids != new_team_ids:
             updates[TEAM_IDS] = new_team_ids
+            print(f'User {self.username}: team_ids has changed from {old_team_ids} to {new_team_ids}')
             logging.debug(f'User {self.username}: team_ids has changed from {old_team_ids} to {new_team_ids}')
             found_updates = True
         else:
@@ -360,10 +374,73 @@ class User:
         else:
             return None
 
-    def validate(self):
+    def validate(self, errors):
+        """Validates the user."""
 
         logging.debug(f'Validating {self}')
-        for attr in ['active', 'authentication_provider_name', 'locale_id']:
+        for attr, f, mandatory in self.attrs:
+            if mandatory and getattr(self, attr) is None:
+                logging.error(f'No value found for {attr} property.')
+                errors.append(MissingUserProperty(self.username, attr))
+
+        if not authentication_provider_manager.valid_name(self.authentication_provider_name):
+            errors.append(InvalidAuthenticationProviderName(self.username, self.authentication_provider_name))
+
+        self.validate_roles(errors)
+
+    def __str__(self):
+        """Returns a string representation of the user."""
+        return f'User[username={self.username},email={self.email},first_name={self.first_name},last_name={self.last_name},authentication_provider={self.authentication_provider_name},locale_id={self.locale_id},roles={self.roles},active={self.active},allowed_ip_list={self.allowed_ip_list},cell_phone_number={self.cell_phone_number},country={self.country},expiration_date={self.expiration_date},job_title={self.job_title},other={self.other},phone_number={self.phone_number},user_id={self.user_id})'
+
+    def __repr__(self):
+        """Returns a string representation of the user."""
+        return f'User({self.username}, {self.email}, {self.first_name}, {self.last_name}, {self.authentication_provider_name}, {self.locale_id}, {self.roles}, {self.active}, {self.allowed_ip_list, self.cell_phone_number, self.country, self.expiration_date, self.job_title, self.other, self.phone_number, self.user_id})'
+
+
+class UserReference:
+    """A reference to a user.
+
+    Users are uniquely identified by their username and their
+    authentication provider.
+
+    """
+
+    def __init__(self, username, authentication_provider_name):
+
+        self.username = username
+        self.authentication_provider_name = authentication_provider_name
+
+    def __eq__(self, other):
+        """Returns True if this user reference and other are thesame."""
+        if type(self) is type(other):
+            return (self.username, self.authentication_provider_name) == \
+                (other.username, other.authentication_provider_name)
+
+    def __hash__(self):
+        """Returns the hash of this user reference."""
+        return hash((self.username, self.authentication_provider_name))
+
+    def to_dict(self):
+        """Generates a dictionary representation of the user (which leads to
+        prettier YAML output)."""
+
+        d = {
+            USERNAME: self.username,
+            AUTHENTICATION_PROVIDER_NAME: self.authentication_provider_name
+        }
+
+        return d
+
+    @staticmethod
+    def from_dict(d):
+        """Creates a User from a dictionary."""
+        logging.debug(f'd: {d}')
+        return User(**d)
+
+    def validate(self):
+        """Validates this user reference."""
+        logging.debug(f'Validating {self}')
+        for attr in ['authentication_provider_name']:
             if getattr(self, attr) is None:
                 raise ValueError(f'{self.username}: {attr} is None')
 
@@ -371,206 +448,284 @@ class User:
         _ = authentication_provider_manager.id_from_name(self.authentication_provider_name)
 
     def __str__(self):
-
-        return f'User[username={self.username},email={self.email},first_name={self.first_name},last_name={self.last_name},authentication_provider={self.authentication_provider_name},locale_id={self.locale_id},roles={self.roles},active={self.active},allowed_ip_list={self.allowed_ip_list},cell_phone_number={self.cell_phone_number},country={self.country},expiration_date={self.expiration_date},job_title={self.job_title},other={self.other},phone_number={self.phone_number},user_id={self.user_id})'
+        """Returns a string representation of this user reference."""
+        return f'UserReference[username={self.username},authentication_provider={self.authentication_provider_name}]'
 
     def __repr__(self):
-
-        return f'User({self.username}, {self.email}, {self.first_name}, {self.last_name}, {self.authentication_provider_name}, {self.locale_id}, {self.roles}, {self.active}, {self.allowed_ip_list, self.cell_phone_number, self.country, self.expiration_date, self.job_title, self.other, self.phone_number, self.user_id})'
+        """Returns a string representation of this user reference."""
+        return f'UserReference({self.username}, {self.authentication_provider_name})'
 
 
 class Model:
-    """A model of teams and users.
+    """A model of Access Control teams and users.
 
-    The model consists of two dictionaries:
+    The model consists of a collection of users, a list of teams, and
+    and three dictionaries:
 
-    - team_map: a mapping from a team's full name to a corresponding Team instance.
-    - user_map: a mapping from a user's username and authentication provider name to
-                a mapping of team full names to User instances.
+    - team_map: a mapping from a team's full name to a corresponding Team
+                instance.
+    - user_map: a mapping from a user's username and authentication provider
+                name to the corresponding User instance.
+    - user_team_ids_map: a mapping from a user's username and authentication
+                         provider name to a set of team identifiers. This
+                         map is rebuilt when changes are made to the teams.
     """
 
-    def __init__(self, teams):
+    def __init__(self, teams, users):
 
         self.teams = teams
+        self.users = users
         self.team_map = {}
+        self.user_team_ids_map = {}
         self.user_map = {}
         for team in teams:
             if team.full_name in self.team_map:
-                logging.error(f'Cannot have two teams with the same full name {team.full_name}')
+                # TODO throw exception
+                logging.error(f'Cannot have two teams with the same full name ({team.full_name})')
             self.team_map[team.full_name] = team
+        for user in users.users:
+            key = UserReference(user.username, user.authentication_provider_name)
+            if key in self.user_map:
+                # TODO throw exception
+                logging.error(f'Cannot have two users with the same username and autentication provider ({key})')
+            self.user_map[key] = user
+        self.update_user_team_ids_map()
+
+    def update_user_team_ids_map(self):
+        """Updates the mapping from users to sets of team identifiers."""
+        logging.debug('Updating user team ids map')
+        self.user_team_ids_map = {}
+        for team in self.teams:
             for user in team.users:
-                key = UserMapKey(user.username, user.authentication_provider_name)
-                team_user_map = self.user_map.get(key, {})
-                team_user_map[team.full_name] = user
-                self.user_map[key] = team_user_map
+                key = UserReference(user.username, user.authentication_provider_name)
+                user_teams = self.user_team_ids_map.get(key, set())
+                user_teams.add(team.team_id)
+                self.user_team_ids_map[key] = user_teams
+
+    def update_team_ids(self, other):
+        """Updates the team identifiers from the other model instance.
+
+        The assumption here is that one model will have been loaded
+        from disk and so will not have team_id values; the other will
+        have been retrieved from Access Control, and will have team_id
+        values.
+
+        """
+        logging.debug('Updating team ids')
+        for team in other.teams:
+            if team.full_name in self.team_map:
+                logging.debug(f'Setting team_id of {team.full_name} to {team.team_id}')
+                self.team_map[team.full_name].team_id = team.team_id
+            else:
+                logging.debug(f'{team.team_full_nam} not in team_map')
+        self.update_user_team_ids_map()
 
     def validate(self):
         """Validates the model."""
         logging.debug('Validating model')
 
         errors = []
-        self.validate_default_roles(errors)
         self.validate_users(errors)
         return errors
 
-    def validate_default_roles(self, errors):
-        """Validates each team's default roles."""
-        logging.debug('Validating default roles')
-        for team in self.teams:
-            team.validate_default_roles(errors)
-
     def validate_users(self, errors):
-        """Makes sure that user definitions are consistent across teams."""
-        for user_map_key, user_map_entry in self.user_map.items():
-            self.validate_user(errors, user_map_key, user_map_entry)
+        """Validates the model's users.
 
-    def validate_user(self, errors, user_map_key, team_user_map):
-        """Validates the specified user."""
-        logging.debug(f'Validating user {user_map_key.username} (authentication provider: {user_map_key.authentication_provider_name})')
+        Makes sure that each userbelongs to at least one team.
+        """
+        logging.debug('Validating users')
+        for user in self.users.users:
+            user.validate(errors)
+            key = UserReference(user.username, user.authentication_provider_name)
+            if key not in self.user_team_ids_map:
+                logging.error(f'{user.username} does not belong to any teams')
+                errors.append(NoTeam(user.username, user.authentication_provider_name))
 
-        if len(team_user_map) == 1:
-            logging.debug(f'User {user_map_key.username} belongs to multiple teams')
-
-        first_team = None
-        first_user = None
-        for team_full_name, user in team_user_map.items():
-            user.validate_roles(errors, team_full_name)
-            if not first_user:
-                first_team = self.team_map[team_full_name]
-                first_user = user
-                first_roles = user.roles
-            else:
-                # By definition, the username values are the same
-                if user.email != first_user.email:
-                    logging.debug(f'{first_user.email} != {user.email}')
-                    errors.append(InconsistentUser('email',
-                                                   first_user.username,
-                                                   first_team.full_name,
-                                                   team_full_name,
-                                                   first_user.email,
-                                                   user.email))
-                team = self.team_map[team_full_name]
-                roles = user.roles
-                if first_roles != roles:
-                    logging.debug(f'{first_roles} != {roles}')
-                    errors.append(InconsistentUser('roles',
-                                                   first_user.username,
-                                                   first_team.full_name,
-                                                   team_full_name,
-                                                   first_roles,
-                                                   roles))
-
-    def apply_changes(self, ac_api, new_model, dry_run):
-        """Applies the changes needed to make this model match the new model."""
+    def apply_changes(self, new_model, dry_run):
+        """Applies the changes needed to make this model match the new model.
+        """
         logging.info('Applying changes')
-        self.apply_team_changes(ac_api, new_model, dry_run)
-        self.apply_user_changes(ac_api, new_model, dry_run)
+        new_model.update_team_ids(self)
+        self.add_teams(new_model, dry_run)
+        self.add_users(new_model, dry_run)
+        self.update_users(new_model, dry_run)
+        self.delete_users(new_model, dry_run)
+        self.delete_teams(new_model, dry_run)
 
-    def apply_team_changes(self, ac_api, new_model, dry_run):
-        """Applies team changes to make this model match the new model."""
-        logging.info('Applying team changes')
+    def add_teams(self, new_model, dry_run):
+        """Adds teams that are in the new model but not the old."""
+        logging.info("Adding teams")
         cur_team_names = set(self.team_map.keys())
         logging.debug(f'Current teams: {cur_team_names}')
         new_team_names = set(new_model.team_map.keys())
         logging.debug(f'New teams: {new_team_names}')
         teams_to_create = new_team_names - cur_team_names
         logging.debug(f'Teams to create: {teams_to_create}')
-        teams_to_delete = cur_team_names - new_team_names
-        logging.debug(f'Teams to delete: {teams_to_delete}')
 
-        # Update ids of teams in new_model
-        for team_full_name in new_model.team_map:
-            if team_full_name in self.team_map:
-                new_model.team_map[team_full_name].team_id = self.team_map[team_full_name].team_id
-
-        logging.debug('Creating new teams')
         team_map = copy.deepcopy(new_model.team_map)
         for team_full_name in sorted(teams_to_create):
             logging.debug(f'Creating {team_full_name}')
             team = new_model.team_map[team_full_name]
             parent_full_name = get_team_parent_name(team_full_name)
             parent_id = team_map[parent_full_name].team_id
-            create_team(ac_api, team.name, parent_id, dry_run)
+            create_team(team.name, parent_id, dry_run)
             team_id = ac_api.get_team_id_by_full_name(team.full_name)
-            logging.debug(f'Team ID for {team.name} is {team_id}')
             team.team_id = team_id
             team_map[team.full_name] = team
         new_model.team_map = team_map
+        new_model.update_user_team_ids_map()
 
-        logging.debug('Deleting teams')
+    def delete_teams(self, new_model, dry_run):
+        """Deletes any teams in that are in the old model but not the new."""
+        logging.info("Deleting teams")
+        cur_team_names = set(self.team_map.keys())
+        logging.debug(f'Current teams: {cur_team_names}')
+        new_team_names = set(new_model.team_map.keys())
+        logging.debug(f'New teams: {new_team_names}')
+        teams_to_delete = cur_team_names - new_team_names
+        logging.debug(f'Teams to delete: {teams_to_delete}')
+
         for team_full_name in sorted(teams_to_delete, reverse=True):
             logging.debug(f'Deleting {team_full_name}')
-            delete_team(ac_api, self.team_map[team_full_name].team_id, dry_run)
+            delete_team(self.team_map[team_full_name].team_id, dry_run)
 
-        # Update team_id values of existing teams in the new model
-        for team_name in cur_team_names:
-            if team_name in new_team_names:
-                old_team = self.team_map[team_name]
-                new_team = new_model.team_map[team_name]
-                new_team.team_id = old_team.team_id
-
-    def apply_user_changes(self, ac_api, new_model, dry_run):
-        """Applies user changes to make this model match the new model."""
-        logging.info('Applying user changes')
+    def add_users(self, new_model, dry_run):
+        """Adds users that are in the new model but not the old."""
+        logging.info('Adding users')
 
         cur_users = set(self.user_map.keys())
         logging.debug(f'Current users: {cur_users}')
         new_users = set(new_model.user_map.keys())
-        logging.debug(f'New users')
+        logging.debug('New users')
         users_to_create = new_users - cur_users
         logging.debug(f'Users to create: {users_to_create}')
+
+        for userkey in sorted(users_to_create):
+            logging.debug(f'Creating {userkey.username}')
+            create_user(new_model.get_user_by_userkey(userkey),
+                        new_model.get_user_team_ids(userkey), dry_run)
+
+    def delete_users(self, new_model, dry_run):
+        """Deletes users that are in the old model but not in the new."""
+        logging.info('Deleting users')
+
+        cur_users = set(self.user_map.keys())
+        logging.debug(f'Current users: {cur_users}')
+        new_users = set(new_model.user_map.keys())
+        logging.debug('New users')
         users_to_delete = cur_users - new_users
         logging.debug(f'Users to delete: {users_to_delete}')
 
-        logging.debug('Creating new users')
-        for userkey in sorted(users_to_create):
-            logging.debug(f'Creating {userkey.username}')
-            create_user(ac_api, new_model.get_user_by_userkey(userkey),
-                        new_model.get_user_team_ids(userkey), dry_run)
-
-        logging.debug('Deleting users')
         for userkey in sorted(users_to_delete):
             logging.debug(f'Deleting {userkey.username}')
-            delete_user(ac_api, self.get_user_by_userkey(userkey), dry_run)
+            delete_user(self.get_user_by_userkey(userkey), dry_run)
 
-        # Update existing users
-        for userkey in cur_users & new_users:
+    def update_users(self, new_model, dry_run):
+        """Updates users whose properties (including teams) have changed."""
+        logging.info('Updating users')
+
+        logging.info(f'old_user_team_ids_map: {self.user_team_ids_map}')
+        logging.info(f'new_user_team_ids_map: {new_model.user_team_ids_map}')
+        cur_users = set(self.user_map.keys())
+        logging.debug(f'Current users: {cur_users}')
+        new_users = set(new_model.user_map.keys())
+        logging.debug('New users')
+        users_to_update = new_users & cur_users
+        logging.debug(f'Users to check for updates: {users_to_update}')
+
+        logging.debug('Updating users')
+        for userkey in users_to_update:
             old_user = self.get_user_by_userkey(userkey)
             old_team_ids = self.get_user_team_ids(userkey)
             new_user = new_model.get_user_by_userkey(userkey)
             new_team_ids = new_model.get_user_team_ids(userkey)
 
-            updates = old_user.get_updates(new_user, old_team_ids, new_team_ids)
+            updates = old_user.get_updates(new_user, old_team_ids,
+                                           new_team_ids)
             if updates:
                 logging.debug(f'Setting updates[{USER_ID}] to {old_user.user_id}')
                 updates[USER_ID] = old_user.user_id
                 logging.debug(f'updates for {userkey.username}: {updates}')
-                update_user(ac_api, updates, dry_run)
+                update_user(updates, dry_run)
 
     def get_user_by_userkey(self, userkey):
-        """Given a userkey, return the corresponding user object.
-
-        In a valid configuration, if a user belongs to multiple teams,
-        the user's details should be identical in each team so it
-        doesn't matter which one we return.
-
-        """
-        team_map = self.user_map[userkey]
-        for user in team_map.values():
-            return user
+        """Returns the User instance corresponding to userkey."""
+        return self.user_map[userkey]
 
     def get_user_team_ids(self, userkey):
-        """Returns a set of team ids of which the specified user is a member."""
-        team_ids = []
-        for team_full_name in self.user_map[userkey]:
-            team = self.team_map[team_full_name]
-            if not team or not team.team_id:
-                raise RuntimeError(f'Cannot determine team ID for {team_full_name}')
-            team_ids.append(team.team_id)
-        return set(team_ids)
+        """Returns a set of team ids of which the specified user is a member.
+        """
+        return self.user_team_ids_map[userkey]
+
+    @staticmethod
+    def retrieve_from_access_control():
+        """Retrieves model data from Access Control."""
+        logging.info('Retrieving user and team data from Access Control')
+        cx_teams = ac_api.get_all_teams()
+        cx_users = ac_api.get_all_users()
+        teams = []
+        team_map = {}
+        users = Users([])
+
+        for cx_team in cx_teams:
+            logging.debug(f'retrieve_from_access_control: cx_team: {cx_team}')
+            team = Team(cx_team.name, cx_team.full_name, team_id=cx_team.id)
+            teams.append(team)
+            team_map[cx_team.id] = team
+
+        for cx_user in cx_users:
+            logging.debug(f'retrieve_from_access_control: cx_user: {cx_user}')
+            roles = [role_manager.name_from_id(r) for r in cx_user.role_ids]
+            authentication_provider_name = authentication_provider_manager.name_from_id(cx_user.authentication_provider_id)
+            user = User(cx_user.username, authentication_provider_name,
+                        cx_user.email, cx_user.first_name, cx_user.last_name,
+                        cx_user.locale_id, roles, cx_user.active,
+                        cx_user.allowed_ip_list,
+                        cx_user.cell_phone_number, cx_user.country,
+                        cx_user.expiration_date, cx_user.job_title,
+                        cx_user.other, cx_user.phone_number,
+                        cx_user.id)
+            errors = []
+            user.validate(errors)
+            users.append(user)
+
+            for team_id in cx_user.team_ids:
+                team = team_map[team_id]
+                user_ref = UserReference(cx_user.username, authentication_provider_name)
+                team.users.append(user_ref)
+
+        return Model(teams, users)
+
+    @staticmethod
+    def load(dirname):
+        """Loads a model from the specified directory."""
+        dir_path = pathlib.Path(dirname)
+        users_path = dir_path / pathlib.Path('users') / pathlib.Path('users.yml')
+        users = Users.load(users_path)
+        teams_dir_path = dir_path / pathlib.Path('teams')
+        teams = Team.load_dir(teams_dir_path)
+        return Model(teams, users)
+
+    def save(self, dirname='.'):
+        """Saves this model to the specified directory."""
+        dir_path = pathlib.Path(dirname)
+        dir_path.mkdir(exist_ok=True)
+        users_dir_path = dir_path / pathlib.Path('users')
+        users_dir_path.mkdir(exist_ok=True)
+        self.users.save(users_dir_path)
+        teams_dir_path = dir_path / pathlib.Path('teams')
+        teams_dir_path.mkdir(exist_ok=True)
+        for team in self.teams:
+            team.save(teams_dir_path)
 
 
 class RoleManager:
+    """A manager of Access Control roles.
+
+    "Manager" is maybe a bit overblown: this class retrieves the roles
+    from Access Control and then translates between role names and
+    role identifiers.
+    """
 
     def __init__(self, ac_api):
 
@@ -578,6 +733,7 @@ class RoleManager:
         logging.debug(f'all_roles: {[r.name for r in self.all_roles]}')
 
     def name_from_id(self, role_id):
+        """Returns the role name that corresponds to role_id."""
         for role in self.all_roles:
             if role.id == role_id:
                 return role.name
@@ -585,13 +741,15 @@ class RoleManager:
         raise ValueError(f'{role_id}: invalid role ID')
 
     def id_from_name(self, role_name):
+        """Returns the role identifier that corresponds to role_name."""
         for role in self.all_roles:
             if role.name == role_name:
                 return role.id
 
         raise ValueError(f'{role_name}: invalid role name')
 
-    def valid_role_by_name(self, role_name):
+    def valid_name(self, role_name):
+        """Indicates with a role name is valid."""
         for role in self.all_roles:
             if role.name == role_name:
                 return True
@@ -600,13 +758,21 @@ class RoleManager:
 
 
 class AuthenticationProviderManager:
+    """A manager of Access Control authentication providers.
+
+    "Manager" is maybe a bit overblown: this class retrieves the
+    authentication providers from Access Control and then translates
+    between role names and role identifiers.
+    """
 
     def __init__(self, ac_api):
 
         self.authentication_providers = ac_api.get_all_authentication_providers()
 
     def name_from_id(self, provider_id):
-
+        """Returns the authentication provider name that corresponds to
+        provider_id.
+        """
         for provider in self.authentication_providers:
             if provider.id == provider_id:
                 return provider.name
@@ -614,67 +780,77 @@ class AuthenticationProviderManager:
         raise ValueError(f'{provider_id}: invalid authentication provider ID')
 
     def id_from_name(self, provider_name):
-
+        """Returns the authentication provider identifier that corresponds
+        to provider_name."""
         for provider in self.authentication_providers:
             if provider.name == provider_name:
                 return provider.id
 
         raise ValueError(f'{provider_name}: invalid authentication provider name')
 
-class InconsistentUser:
+    def valid_name(self, provider_name):
+        """Indicates with an authentication provider name is valid."""
+        for provider in self.authentication_providers:
+            if provider.name == provider_name:
+                return True
 
-    def __init__(self, property, username, team_a, team_b, value_a, value_b):
-
-        self.property = property
-        self.username = username
-        self.team_a = team_a
-        self.team_b = team_b
-        self.value_a = value_a
-        self.value_b = value_b
-
-    def __repr__(self):
-
-        return f'InconsistentUser({self.property}, {self.username}, {self.team_a}, {self.team_b}, {self.value_a}, {self.value_b})'
-
-
-class InvalidDefaultRole:
-
-    def __init__(self, team_full_name, role):
-
-        self.team_full_name = team_full_name
-        self.role = role
-
-    def __repr__(self):
-
-        return f'InvalidDefaultRole({self.team_full_name}, {self.role})'
+        return False
 
 
 class InvalidRole:
+    """An invalid role error."""
 
-    def __init__(self, team_full_name, username, role):
+    def __init__(self, username, role):
 
-        self.team_full_name = team_full_name
         self.username = username
         self.role = role
 
     def __repr__(self):
 
-        return f'InvalidRole({self.team_full_name}, {self.username}, {self.role})'
+        return f'InvalidRole({self.username}, {self.role})'
 
 
-class MissingDefaultAttribute:
+class InvalidAuthenticationProviderName:
+    """An invalid authentication provider name error."""
 
-    def __init__(self, username, team_full_name, attr):
+    def __init__(self, username, authentication_provider_name):
 
         self.username = username
-        self.team_full_name = team_full_name
-        self.attr = attr
+        self.authentication_provider_name = authentication_provider_name
 
     def __repr__(self):
 
-        return f'MissingDefaultAttribute({self.username}, {self.team_full_name}, {self.attr})'
+        return f'InvalidAuthenticationProviderName({self.username}, {self.authentication_provider_name})'
+
+
+class NoTeam:
+    """A no team error."""
+
+    def __init__(self, username, authentication_provider_name):
+
+        self.username = username
+        self.authentication_provider_name = authentication_provider_name
+
+    def __repr__(self):
+
+        return f'NoTeam({self.username}, {self.authentication_provider_name})'
+
+
+class MissingUserProperty:
+    """A missing user property error."""
+
+    def __init__(self, username, property):
+
+        self.username = username
+        self.property = property
+
+    def __repr__(self):
+
+        return f'MissingUserProperty({self.username}, {self.property})'
+
 
 class ModelValidationError(Exception):
+    """A generic model validation error."""
 
     def __init__(self, errors):
 
@@ -684,59 +860,48 @@ class ModelValidationError(Exception):
 
         return f'ModelValidationError({self.errors})'
 
+
+def attr_equal(attr1, attr2, attr_type):
+    """Return True if two attributes are equal.
+
+    If the attribute type is not bool, then we treat different Python
+    False values as the same.
+
+    For example, if the type is str, the empty string and None will be
+    considered equal.
+    """
+    if attr_type is not bool and not attr1 and not attr2:
+        return True
+
+    return attr1 == attr2
+
+
 def get_team_parent_name(full_name):
-    '''Given a team's full name, return it's parent team's full name'''
+    """Returns the full name of the parent team to the specified team."""
     return '/'.join(full_name.split('/')[0:-1])
 
 
-def retrieve_teams(ac_api, options):
-    logging.info('retrieve_teams')
-    cx_teams = ac_api.get_all_teams()
-    cx_users = ac_api.get_all_users()
-    teams = []
-    for cx_team in cx_teams:
-        logging.debug(f'cx_team: {cx_team}')
-        team = Team(cx_team.name, cx_team.full_name, team_id=cx_team.id)
-        for cx_user in cx_users:
-            roles = [role_manager.name_from_id(r) for r in cx_user.role_ids]
-            if cx_team.id in cx_user.team_ids:
-                logging.debug(f'Adding user {cx_user.username} to team {cx_team.full_name}')
-                authentication_provider_name = authentication_provider_manager.name_from_id(cx_user.authentication_provider_id)
-                user = User(cx_user.username, cx_user.email,
-                            cx_user.first_name, cx_user.last_name,
-                            authentication_provider_name,
-                            cx_user.locale_id, roles, cx_user.active,
-                            cx_user.allowed_ip_list,
-                            cx_user.cell_phone_number, cx_user.country,
-                            cx_user.expiration_date, cx_user.job_title,
-                            cx_user.other, cx_user.phone_number,
-                            cx_user.id)
-                user.validate()
-                team.add_user(user)
-
-        teams.append(team)
-
-    return teams
-
-
-def extract(ac_api, options):
+def extract(options):
+    """Extracts a model from Access Control and saves it."""
     logging.info('extract')
-    for team in retrieve_teams(ac_api, options):
-        team.save(options.dest_dir)
+    model = Model.retrieve_from_access_control()
+    model.save(options.dest_dir)
 
 
-def update(ac_api, options):
+def update(options):
+    """Updates Access Control to match the """
     logging.info('update')
-    cur_teams = retrieve_teams(ac_api, options)
-    cur_model = Model(cur_teams)
-    new_model = validate(ac_api, options)
-    cur_model.apply_changes(ac_api, new_model, options.dry_run)
+    cur_model = Model.retrieve_from_access_control()
+    new_model = validate(options)
+    logging.info('update: updating team ids of new model')
+    new_model.update_team_ids(cur_model)
+    cur_model.apply_changes(new_model, options.dry_run)
 
 
-def validate(ac_api, options):
+def validate(options):
+    """Validates a model specified by YAML files."""
     logging.info(f'Validating files in {options.data_dir}')
-    teams = Team.load_dir(options.data_dir)
-    model = Model(teams)
+    model = Model.load(options.data_dir)
     errors = model.validate()
     if errors:
         logging.error('Model failed validation')
@@ -746,19 +911,22 @@ def validate(ac_api, options):
     return model
 
 
-def create_team(ac_api, team_name, team_parent_id, dry_run):
+def create_team(team_name, team_parent_id, dry_run):
+    """Creates a team in Access Control."""
     logging.info(f'Creating team {team_name} under parent {team_parent_id}')
     if not dry_run:
         ac_api.create_new_team(team_name, team_parent_id)
 
 
-def delete_team(ac_api, team_id, dry_run):
+def delete_team(team_id, dry_run):
+    """Deletes a team from Access Control."""
     logging.info(f'Deleting team {team_id}')
     if not dry_run:
         ac_api.delete_a_team(team_id)
 
 
-def create_user(ac_api, user, team_ids, dry_run):
+def create_user(user, team_ids, dry_run):
+    """Creates a user in Access Control."""
     logging.info(f'Creating user {user.username}')
     if not dry_run:
         authentication_provider_id = authentication_provider_manager.id_from_name(user.authentication_provider_name)
@@ -772,13 +940,15 @@ def create_user(ac_api, user, team_ids, dry_run):
                                user.locale_id)
 
 
-def delete_user(ac_api, user, dry_run):
+def delete_user(user, dry_run):
+    """Deletes a user from Access Control."""
     logging.info(f'Deleting user {user.username} ({user.user_id})')
     if not dry_run:
         ac_api.delete_a_user(user.user_id)
 
 
-def update_user(ac_api, updates, dry_run):
+def update_user(updates, dry_run):
+    """Updates a user in Access Control."""
     logging.info(f'Updating user with ID {updates[USER_ID]}')
     if USER_ID not in updates or not updates[USER_ID]:
         raise ValueError(f'{USER_ID} missing from updates dictionary')
@@ -796,6 +966,7 @@ def update_user(ac_api, updates, dry_run):
 
 
 def type_check(d, properties):
+
     for property in properties:
         if property.name in d:
             if type(d[property.name]) != property.type:
@@ -804,17 +975,23 @@ def type_check(d, properties):
             raise ValueError(f'"{property.name}" property is mandatory')
 
 
-def usage(ac_api, args):
-
+def usage(args):
+    """Prints a usage message."""
     print(f'''usage: py {sys.argv[0]} <extract|update|validate> [args]''')
 
 
+# Global variables
+ac_api = AccessControlAPI()
+authentication_provider_manager = AuthenticationProviderManager(ac_api)
+role_manager = RoleManager(ac_api)
+
 if __name__ == '__main__':
 
-    ac_api = AccessControlAPI()
     parser = argparse.ArgumentParser(prog='CxMGMTaC')
+    parser.add_argument('--log-config', type=str,
+                        help='The log configuration')
     parser.add_argument('--log-format', type=str,
-                        default='%(asctime)s | %(levelname)s | %(funcName)s: %(message)s',
+                        default=DEFAULT_LOG_FORMAT,
                         help='The log format')
     parser.add_argument('-l', '--log-level', type=str, default='INFO',
                         help='The log level')
@@ -843,12 +1020,13 @@ if __name__ == '__main__':
 
     args = parser.parse_args([arg for arg in sys.argv[1:]
                               if not arg.startswith('--cxsast')])
-    logging.basicConfig(level=args.log_level, format=args.log_format)
+    if args.log_config:
+        logging.config.fileConfig(args.log_config)
+    else:
+        logging.basicConfig(level=args.log_level, format=args.log_format)
 
     try:
-        authentication_provider_manager = AuthenticationProviderManager(ac_api)
-        role_manager = RoleManager(ac_api)
-        args.func(ac_api, args)
+        args.func(args)
     except Exception as e:
         logging.error(f'{args.func.__name__} failed: {e}', exc_info=True)
         sys.exit(1)

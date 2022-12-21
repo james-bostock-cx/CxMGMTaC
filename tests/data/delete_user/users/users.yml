@@ -1,0 +1,105 @@
+users:
+  - active: true
+    authentication_provider_name: Application
+    email: admin@cx.au
+    first_name: admin
+    last_name: admin
+    locale_id: 1
+    roles:
+    - CxReportingService
+    - Admin
+    - CxAnalytix
+    - SAST Auditor
+    - Access Control Manager
+    - SAST Admin
+    username: admin
+  - active: true
+    authentication_provider_name: cx.au
+    email: vader@org
+    first_name: Anakin
+    last_name: Skywalker
+    locale_id: 1
+    roles:
+    - SAST Auditor
+    - SAST Reviewer
+    - SAST Scanner
+    username: vader
+  - active: true
+    authentication_provider_name: cx.au1
+    email: StarWarsSVC@org
+    first_name: StarWarsSVC
+    last_name: StarWarsSVC
+    locale_id: 1
+    roles:
+    - SAST Auditor
+    - SAST Reviewer
+    - SAST Scanner
+    username: StarWarsSVC
+  - active: true
+    authentication_provider_name: Azure AD
+    email: test@cx.au
+    first_name: Test
+    last_name: Sast
+    locale_id: 1
+    roles:
+    - SAST Scanner
+    username: TestSast@nirweinbergoutlook.onmicrosoft.com
+  - active: true
+    authentication_provider_name: Azure AD
+    email: nir.weinberg@outlook.com
+    first_name: Nir
+    last_name: Weinberg
+    locale_id: 1
+    roles:
+    - SAST Scanner
+    username: nir.weinberg_outlook.com#EXT#@nirweinbergoutlook.onmicrosoft.com
+  - active: true
+    authentication_provider_name: Application
+    email: test-new@cx.au
+    first_name: test
+    last_name: test
+    locale_id: 1
+    roles:
+    - CxReportingService
+    - Scanner without new project
+    username: test-new
+  - active: true
+    authentication_provider_name: Application
+    email: report@cx.au
+    first_name: test
+    last_name: reporting
+    locale_id: 1
+    roles:
+    - CxReportingService
+    - SAST Scanner
+    username: reportinguser
+  - active: true
+    authentication_provider_name: Application
+    email: ptum.ptum@local.domain
+    first_name: ptum
+    job_title: whipping rooster
+    last_name: ptum
+    locale_id: 1
+    roles:
+    - Access Control Manager
+    username: ptum
+  - active: true
+    authentication_provider_name: cx.au
+    country: Australia
+    email: ptum2@local.domain
+    first_name: ptum2
+    last_name: ptum2
+    locale_id: 1
+    roles:
+    - Access Control Manager
+    username: ptum2
+  - active: false
+    authentication_provider_name: cx.au
+    email: test-new2@cx.au
+    first_name: test
+    last_name: new2
+    locale_id: 1
+    roles:
+    - CxReportingService
+    - SAST Reviewer
+    username: test-new2

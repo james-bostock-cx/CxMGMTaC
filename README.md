@@ -82,78 +82,77 @@ consistency checks.
 C:\...\> py CxMGMTaC.py validate -d data
 ```
 
+# Directory Structure and File Formats
+
+The `CxMGMTaC.py` script, when run in `extract` mode, will crate two
+directories: `teams` and `users`. In the `teams` directory, it will
+create a YAML file for each team in Access Control. For each team that
+has child teams, it will also create a subdirectory to hold the YAML
+files for the child teams. In the `users` directory, it will create a
+single file, `users.yml`, with the details of the users in Access
+Control.
+
 # The Team File Format
 
 The data for each team is stored in a YAML file.
 
 The following properties are mandatory:
 
-- full\_name
-- name
+- `full\_name`
+- `name`
 
-The following peoperties are optional:
-
-- default\_active
-- default\_allowed\_ip\_list
-- default\_authentication\_provider\_name
-- default\_locale_id
-- default\_roles
-- users
-
-The properties starting with “default\_” apply to all users in the
-team unless overridden at the user level.
-
-The following section describes the properties of the user entries.
-
+- `users`
 
 ## User Entries
 
 All user entries must provide values for the following properties:
 
-- email
-- first\_name
-- last\_name
-- username
-
-The following properties will be inherited from the team’s
-corresponding default properties:
-
-- active
-- allowed\_ip\_list
-- authentication\_provider\_name
-- locale\_id
-- roles
-
-The following properties are optional:
-
-- cell\_phone\_number
-- country
-- expiration\_date
-- job\_title
-- other
-- phone\_number
+- `authentication\_provider\_name`
+- `username`
 
 ## Example
 
 Here is an example team file:
 
 ```
-default_active: true
-default_authentication_provider_name: Application
-default_locale_id: 1
 full_name: /CxServer
 name: CxServer
 users:
-- email: admin@cx.au
+- authentication_provider_name: Application
+  email: admin@cx.au
+```
+
+# The Users File Format
+
+The following property is mandatory:
+
+- `users`
+
+The following properties are optional:
+
+- `default\_active`
+- `default\_allowed\_ip\_list`
+- `default\_authentication\_provider\_name`
+- `default\_locale\_id`
+- `default\_roles`
+
+If any of these properties are present, for a user entry that lacks
+the corresponding property, the value of this property is used.
+
+## Example
+
+Here is an eample `users.xml` file:
+
+```
+default_active: true
+users:
+- authentication_provider_name: Application
+  email: admin@cx.au
   first_name: admin
   last_name: admin
   roles:
   - SAST Admin
-  - SAST Auditor
   - Access Control Manager
-  - CxAnalytix
-  - CxReportingService
-  - Admin
   username: admin
 ```
 
@@ -177,3 +176,10 @@ Note that this argument should come before the subcommand. That is:
 ```
 C:\...\> py CxMGMTaC.py -l DEBUG extract -d data
 ```
+
+For more sophisticated control over logging, a logging configuration
+file may be specified using the `--log-config` command line option.
+
+See the [Python
+documentation](https://docs.python.org/3/library/logging.config.html#logging-config-fileformat)
+for a description of the logging configuration file format.

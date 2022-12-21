@@ -1,0 +1,6 @@
+full_name: /CxServer/test2
+name: test2
+users:
+- authentication_provider_name: cx.au
+  username: test-new2
+

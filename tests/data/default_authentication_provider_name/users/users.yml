@@ -1,0 +1,11 @@
+default_authentication_provider_name: Application
+users:
+  - active: true
+    expiration_date: '2025-11-03T01:20:40.538Z'
+    email: test.user@local.domain
+    first_name: Test
+    last_name: User
+    locale_id: 1
+    roles:
+    - SAST Scanner
+    username: testuser

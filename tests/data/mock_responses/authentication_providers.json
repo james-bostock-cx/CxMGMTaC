@@ -1,0 +1,50 @@
+[
+    {
+        "id": 1,
+        "name": "Application",
+        "providerId": null,
+        "providerType": "Application",
+        "isExternal": false,
+        "active": true
+    },
+    {
+        "id": 4,
+        "name": "cx.au",
+        "providerId": 1,
+        "providerType": "LDAP",
+        "isExternal": false,
+        "active": true
+    },
+    {
+        "id": 1003,
+        "name": "cx.au1",
+        "providerId": 2,
+        "providerType": "LDAP",
+        "isExternal": false,
+        "active": true
+    },
+    {
+        "id": 1004,
+        "name": "Azure AD",
+        "providerId": 1,
+        "providerType": "SAML",
+        "isExternal": true,
+        "active": true
+    },
+    {
+        "id": 2004,
+        "name": "Okta",
+        "providerId": 2,
+        "providerType": "SAML",
+        "isExternal": true,
+        "active": true
+    },
+    {
+        "id": 2005,
+        "name": "CxMGMTaC",
+        "providerId": 3,
+        "providerType": "LDAP",
+        "isExternal": false,
+        "active": true
+    }
+]

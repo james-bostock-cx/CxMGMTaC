@@ -1,0 +1,58 @@
+[
+    {
+        "id": 1,
+        "name": "CxServer",
+        "fullName": "/CxServer",
+        "parentId": 0,
+        "creationDate": null
+    },
+    {
+        "id": 2,
+        "name": "default team",
+        "fullName": "/CxServer/default team",
+        "parentId": 1,
+        "creationDate": null
+    },
+    {
+        "id": 3,
+        "name": "Galaxy Wars",
+        "fullName": "/CxServer/Galaxy Wars",
+        "parentId": 1,
+        "creationDate": null
+    },
+    {
+        "id": 4,
+        "name": "mutatns",
+        "fullName": "/CxServer/mutatns",
+        "parentId": 1,
+        "creationDate": null
+    },
+    {
+        "id": 1002,
+        "name": "Test",
+        "fullName": "/CxServer/Galaxy Wars/Test",
+        "parentId": 3,
+        "creationDate": null
+    },
+    {
+        "id": 2002,
+        "name": "test",
+        "fullName": "/CxServer/test",
+        "parentId": 1,
+        "creationDate": null
+    },
+    {
+        "id": 2008,
+        "name": "test2",
+        "fullName": "/CxServer/test2",
+        "parentId": 1,
+        "creationDate": "2022-09-15T04:40:31.512412Z"
+    },
+    {
+        "id": 2011,
+        "name": "test3",
+        "fullName": "/CxServer/test3",
+        "parentId": 1,
+        "creationDate": "2022-10-05T04:29:43.2764455Z"
+    }
+]

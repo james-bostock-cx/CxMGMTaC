@@ -1,0 +1,6 @@
+full_name: /CxServer/test
+name: test
+users:
+- authentication_provider_name: Application
+  username: test-new
+

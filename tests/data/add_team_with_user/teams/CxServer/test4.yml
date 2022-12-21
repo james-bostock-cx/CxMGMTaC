@@ -1,0 +1,5 @@
+full_name: /CxServer/test4
+name: test4
+users:
+- authentication_provider_name: Application
+  username: ptum2

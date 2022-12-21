@@ -1,0 +1,16 @@
+full_name: /CxServer/Galaxy Wars
+name: Galaxy Wars
+users:
+- authentication_provider_name: Application
+  username: admin
+- authentication_provider_name: cx.au
+  username: vader
+- authentication_provider_name: cx.au1
+  username: StarWarsSVC
+- authentication_provider_name: Azure AD
+  username: TestSast@nirweinbergoutlook.onmicrosoft.com
+- authentication_provider_name: Azure AD
+  username: nir.weinberg_outlook.com#EXT#@nirweinbergoutlook.onmicrosoft.com
+- authentication_provider_name: Application
+  username: reportinguser
+
