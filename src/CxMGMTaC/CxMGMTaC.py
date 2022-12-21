@@ -353,7 +353,6 @@ class User:
             else:
                 updates[attr] = getattr(self, attr)
 
-        logging.info(f'old_team_ids: {old_team_ids}, new_team_ids: {new_team_ids}')
         if old_team_ids != new_team_ids:
             updates[TEAM_IDS] = new_team_ids
             print(f'User {self.username}: team_ids has changed from {old_team_ids} to {new_team_ids}')
@@ -624,8 +623,6 @@ class Model:
         """Updates users whose properties (including teams) have changed."""
         logging.info('Updating users')
 
-        logging.info(f'old_user_team_ids_map: {self.user_team_ids_map}')
-        logging.info(f'new_user_team_ids_map: {new_model.user_team_ids_map}')
         cur_users = set(self.user_map.keys())
         logging.debug(f'Current users: {cur_users}')
         new_users = set(new_model.user_map.keys())
