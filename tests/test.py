@@ -317,9 +317,9 @@ class TestCxMGMTaC(unittest.TestCase):
 
     @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
                 side_effect=mocked_requests_request)
-    def test_delete_team(self, mock_get):
+    def test_delete_team_with_user(self, mock_get):
 
-        self.update_common(Path("data") / Path("delete_team"))
+        self.update_common(Path("data") / Path("delete_team_with_user"))
         self.assertEqual(4, len(mockCxSAST.requests),
                          'Expected exactly three requests')
         request = mockCxSAST.requests[2]
