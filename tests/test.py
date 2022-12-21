@@ -317,6 +317,22 @@ class TestCxMGMTaC(unittest.TestCase):
 
     @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
                 side_effect=mocked_requests_request)
+    def test_delete_team(self, mock_get):
+
+        self.update_common(Path("data") / Path("delete_team"))
+        self.assertEqual(4, len(mockCxSAST.requests),
+                         'Expected exactly three requests')
+        request = mockCxSAST.requests[2]
+        self.assertEqual('PUT', request['method'])
+        self.assertEqual('http://localhost/cxrestapi/auth/Users/5010',
+                         request['url'])
+        request = mockCxSAST.requests[3]
+        self.assertEqual('DELETE', request['method'])
+        self.assertEqual('http://localhost/cxrestapi/auth/Teams/2002',
+                         request['url'])
+
+    @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
+                side_effect=mocked_requests_request)
     def test_add_user(self, mock_get):
 
         self.update_common(Path("data") / Path("add_user"))
