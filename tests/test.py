@@ -269,6 +269,16 @@ class TestCxMGMTaC(unittest.TestCase):
 
     @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
                 side_effect=mocked_requests_request)
+    def test_missing_user(self, mock_get):
+
+        model = CxMGMTaC.Model.load(Path("data") / Path("missing_user"))
+        errors = model.validate()
+        print(f'errors: {errors}')
+        self.assertEqual(1, len(errors))
+        self.assertTrue(isinstance(errors[0], CxMGMTaC.MissingUser))
+
+    @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
+                side_effect=mocked_requests_request)
     def test_no_team(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("no_team"))

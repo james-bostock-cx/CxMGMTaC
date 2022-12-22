@@ -7,6 +7,3 @@ users:
   username: ptum
 - authentication_provider_name: cx.au
   username: ptum2
-- authentication_provider_name: Application
-  username: ptum3
-

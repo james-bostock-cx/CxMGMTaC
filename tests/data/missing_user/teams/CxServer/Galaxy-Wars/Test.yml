@@ -1,10 +1,8 @@
-full_name: /CxServer
-name: CxServer
+full_name: /CxServer/Galaxy Wars/Test
+name: Test
 users:
 - authentication_provider_name: Application
   username: admin
 - authentication_provider_name: Application
-  username: ptum
-- authentication_provider_name: cx.au
-  username: ptum2
+  username: test-new
 

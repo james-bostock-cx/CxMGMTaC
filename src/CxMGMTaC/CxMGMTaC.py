@@ -249,6 +249,14 @@ class Users:
         """Returns the number of users."""
         return len(self.users)
 
+    def __contains__(self, user_ref):
+        """Returns True if the user reference references a valid user."""
+        for user in self.users:
+            if user.authentication_provider_name == user_ref.authentication_provider_name and user.username == user_ref.username:
+                return True
+
+        return False
+
 
 class User:
     """An Access Control user.
@@ -525,12 +533,13 @@ class Model:
 
         errors = []
         self.validate_users(errors)
+        self.validate_teams(errors)
         return errors
 
     def validate_users(self, errors):
         """Validates the model's users.
 
-        Makes sure that each userbelongs to at least one team.
+        Makes sure that each user belongs to at least one team.
         """
         logging.debug('Validating users')
         for user in self.users.users:
@@ -539,6 +548,22 @@ class Model:
             if key not in self.user_team_ids_map:
                 logging.error(f'{user.username} does not belong to any teams')
                 errors.append(NoTeam(user.username, user.authentication_provider_name))
+
+    def validate_teams(self, errors):
+        """Validates this model's teams."""
+        logging.debug('Validating teams')
+        for team in self.teams:
+            self.validate_team(team, errors)
+
+    def validate_team(self, team, errors):
+        """Validates the specified team.
+
+        Makes sure that all the user references are valid.
+        """
+        logging.debug(f'Validating team {team.full_name}')
+        for user_ref in team.users:
+            if user_ref not in self.users:
+                errors.append(MissingUser(user_ref))
 
     def apply_changes(self, new_model, dry_run):
         """Applies the changes needed to make this model match the new model.
@@ -831,6 +856,21 @@ class NoTeam:
     def __repr__(self):
 
         return f'NoTeam({self.username}, {self.authentication_provider_name})'
+
+
+class MissingUser:
+    """A missing user.
+
+    I.e., a team file contains a reference to a non-existent user.
+    """
+
+    def __init__(self, user_ref):
+
+        self.user_ref = user_ref
+
+    def __repr__(self):
+
+        return f'MissingUser({self.user_ref})'
 
 
 class MissingUserProperty:
