@@ -79,7 +79,7 @@ class MockCxSAST:
             count = len(self.teams)
             self.teams = [team for team in self.teams if team[ID] != team_id]
             if len(self.teams) != count:
-                return (200, None)
+                return (204, None)
             else:
                 return (404, None)
         elif request[URL].startswith('http://localhost/cxrestapi/auth/Users'):
@@ -141,7 +141,7 @@ class MockCxSAST:
                     new_user = json.loads(request[DATA])
                     for key in new_user:
                         user[key] = new_user[key]
-                return (200, None)
+                return (204, None)
         else:
             return (404, None)
 
