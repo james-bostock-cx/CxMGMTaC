@@ -176,6 +176,13 @@ class Users:
 
     """
 
+    # We omit the users property as it is handled specially
+    attrs = [Property(DEFAULT_ACTIVE, bool, False),
+             Property(DEFAULT_AUTHENTICATION_PROVIDER_NAME, str, False),
+             Property(DEFAULT_LOCALE_ID, int, False),
+             Property(DEFAULT_ROLES, list, False),
+             ]
+
     def __init__(self, users, default_active=None,
                  default_authentication_provider_name=None,
                  default_locale_id=None, default_roles=None):
@@ -223,10 +230,9 @@ class Users:
             USERS: [user.to_dict() for user in self.users]
         }
 
-        for attr in [DEFAULT_ACTIVE, DEFAULT_AUTHENTICATION_PROVIDER_NAME,
-                     DEFAULT_LOCALE_ID, DEFAULT_ROLES]:
-            if hasattr(self, attr):
-                d[attr] = getattr(self, attr)
+        for attr, f, mandatory in self.attrs:
+            if getattr(self, attr) is not None:
+                d[attr] = f(getattr(self, attr))
 
         return d
 
