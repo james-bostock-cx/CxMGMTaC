@@ -167,11 +167,10 @@ class MockCxSAST:
 
 mockCxSAST = MockCxSAST()
 
+
 def mocked_requests_request(*args, **kwargs):
 
     global request_list
-
-    mock_responses_dir = Path('data') / Path('mock_responses')
 
     class MockResponse:
         def __init__(self, json_data, status_code):
