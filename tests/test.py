@@ -1,16 +1,20 @@
+from collections import namedtuple
 import datetime
 import json
 import logging
+import os
 from pathlib import Path
 import sys
 import unittest
 from unittest import mock
+import yaml
 
 cwd = Path().absolute()
 sys.path.insert(1, str(cwd.parents[0] / Path('src') / Path('CxMGMTaC')))
 
 # see https://stackoverflow.com/questions/15753390/how-can-i-mock-requests-and-the-response
 
+Options = namedtuple('Options', ['data_dir', 'retrieve_user_entries'])
 
 from CheckmarxPythonSDK.CxRestAPISDK.config import config
 config['base_url'] = 'http://localhost'
@@ -43,6 +47,12 @@ class MockCxSAST:
         with open(self.responses_dir / Path('authentication_providers.json'),
                   'r') as f:
             self.authentication_providers = json.load(f)
+
+        with open(self.responses_dir / Path('ldap_servers.json'), 'r') as f:
+            self.ldap_servers = json.load(f)
+
+        with open(self.responses_dir / Path('ldap_user_entries.json'), 'r') as f:
+            self.ldap_user_entries = json.load(f)
 
         with open(self.responses_dir / Path('roles.json'), 'r') as f:
             self.roles = json.load(f)
@@ -97,6 +107,19 @@ class MockCxSAST:
 
         if request[URL] == 'http://localhost/cxrestapi/auth/AuthenticationProviders':
             return (200, self.authentication_providers)
+        elif request[URL].startswith('http://localhost/cxrestapi/auth/LDAPServers'):
+            bits = request[URL].split('/')
+            if len(bits) == 6:
+                return (200, self.ldap_servers)
+            elif len(bits) == 8 and bits[7].startswith('UserEntries'):
+                ldap_server_id = int(bits[6])
+                username_contains_pattern = bits[7]
+                if ldap_server_id == 3 and username_contains_pattern == 'UserEntries?userNameContainsPattern=testuser':
+                    return (200, self.ldap_user_entries)
+                else:
+                    return (200, [])
+            else:
+                return (404, None)
         elif request[URL] == 'http://localhost/cxrestapi/auth/Users':
             return (200, self.users)
         elif request[URL] == 'http://localhost/cxrestapi/auth/Roles':
@@ -206,7 +229,8 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_invalid_role(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("invalid_role"))
-        errors = model.validate()
+        options = Options(None, False)
+        errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.InvalidRole))
 
@@ -215,7 +239,8 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_invalid_authentication_provider_name(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("invalid_authentication_provider_name"))
-        errors = model.validate()
+        options = Options(None, False)
+        errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0],
                                    CxMGMTaC.InvalidAuthenticationProviderName))
@@ -225,7 +250,8 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_missing_active(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("missing_active"))
-        errors = model.validate()
+        options = Options(None, False)
+        errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.MissingUserProperty))
 
@@ -234,7 +260,8 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_missing_email(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("missing_email"))
-        errors = model.validate()
+        options = Options(None, False)
+        errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.MissingUserProperty))
 
@@ -243,7 +270,8 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_missing_first_name(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("missing_first_name"))
-        errors = model.validate()
+        options = Options(None, False)
+        errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.MissingUserProperty))
 
@@ -252,7 +280,8 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_missing_last_name(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("missing_last_name"))
-        errors = model.validate()
+        options = Options(None, False)
+        errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.MissingUserProperty))
 
@@ -261,7 +290,8 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_missing_locale_id(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("missing_locale_id"))
-        errors = model.validate()
+        options = Options(None, False)
+        errors = model.validate(options)
         print(f'errors: {errors}')
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.MissingUserProperty))
@@ -271,7 +301,8 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_missing_user(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("missing_user"))
-        errors = model.validate()
+        options = Options(None, False)
+        errors = model.validate(options)
         print(f'errors: {errors}')
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.MissingUser))
@@ -281,7 +312,8 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_no_team(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("no_team"))
-        errors = model.validate()
+        options = Options(None, False)
+        errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.NoTeam))
 
@@ -290,7 +322,8 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_default_authentication_provider_name(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("default_authentication_provider_name"))
-        errors = model.validate()
+        options = Options(None, False)
+        errors = model.validate(options)
         self.assertEqual(0, len(errors))
         self.assertEqual('Application', model.users.users[0].authentication_provider_name)
 
@@ -376,17 +409,64 @@ class TestCxMGMTaC(unittest.TestCase):
         self.assertEqual('http://localhost/cxrestapi/auth/Users/11019',
                          request['url'])
 
+    @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
+                side_effect=mocked_requests_request)
+    def test_retrieve_user_entries(self, mock_get):
+        '''Test the retrieval of user data from the LDAP server.'''
+
+        options = Options('.', True)
+        model = CxMGMTaC.Model.load(Path("data") / Path("retrieve_user_entries"))
+        errors = model.validate(options)
+        self.assertEqual(0, len(errors))
+        with open('users.yml', 'r') as f:
+            users = yaml.load(f, Loader=yaml.CLoader)
+            found = False
+            for user in users['users']:
+                if (user['username'] == 'testuser'
+                    and user['email'] == 'testuser@cxmgmtac.com'
+                    and user['first_name'] == 'test'
+                    and user['last_name'] == 'user'):
+                    found = True
+                    break
+        self.assertTrue(found, 'Could not find user in users.yml')
+        os.remove('users.yml')
+        self.assertEqual(1, len(mockCxSAST.requests),
+                         'Expected exactly one request')
+        request = mockCxSAST.requests[0]
+        self.assertEqual('GET', request['method'])
+        self.assertEqual('http://localhost/cxrestapi/auth/LDAPServers/3/UserEntries?userNameContainsPattern=testuser',
+                         request['url'])
+
+    @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
+                side_effect=mocked_requests_request)
+    def test_retrieve_missing_user_entries(self, mock_get):
+        '''Test the retrieval of user data from the LDAP server where
+        the user cannot be found.'''
+
+        options = Options('.', True)
+        model = CxMGMTaC.Model.load(Path("data") / Path("retrieve_missing_user_entries"))
+        errors = model.validate(options)
+        self.assertEqual(1, len(errors))
+        self.assertEqual(1, len(mockCxSAST.requests),
+                         'Expected exactly one request')
+        request = mockCxSAST.requests[0]
+        self.assertEqual('GET', request['method'])
+        self.assertEqual('http://localhost/cxrestapi/auth/LDAPServers/3/UserEntries?userNameContainsPattern=nosuchuser',
+                         request['url'])
+
     def update_common(self, path):
 
+        options = Options(None, False)
         old_model = CxMGMTaC.Model.retrieve_from_access_control()
         new_model = CxMGMTaC.Model.load(path)
-        errors = new_model.validate()
+        errors = new_model.validate(options)
         self.assertEqual(0, len(errors))
         old_model.apply_changes(new_model, False)
 
     def setUp(self):
 
         mockCxSAST.init()
+
 
 if __name__ == '__main__':
     unittest.main()

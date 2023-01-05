@@ -227,12 +227,17 @@ class Users:
 
         """
         d = {
-            USERS: [user.to_dict() for user in self.users]
+            USERS: [user.to_dict(default_active=self.default_active,
+                                 default_authentication_provider_name=self.default_authentication_provider_name,
+                                 default_locale_id=self.default_locale_id,
+                                 default_roles=self.default_roles) for user in self.users]
         }
 
         for attr, f, mandatory in self.attrs:
             if getattr(self, attr) is not None:
                 d[attr] = f(getattr(self, attr))
+            elif mandatory:
+                raise ValueError(f'{attr} attribute is mandatory')
 
         return d
 
@@ -319,14 +324,17 @@ class User:
         self.other = other
         self.phone_number = phone_number
 
-    def to_dict(self):
+    def to_dict(self, **kwargs):
         """Generates a dictionary representation of the user (which leads to
         prettier YAML output)."""
 
+        logging.debug(f'User.to_dict: kwargs: {kwargs}')
         d = {}
         for attr, f, mandatory in self.attrs:
             if f is bool or getattr(self, attr):
                 d[attr] = f(getattr(self, attr))
+            elif mandatory and kwargs.get(f'default_{attr}') is None:
+                raise ValueError(f'{attr} attribute is mandatory')
 
         return d
 
@@ -533,16 +541,16 @@ class Model:
                 logging.debug(f'{team.full_name} not in team_map')
         self.update_user_team_ids_map()
 
-    def validate(self):
+    def validate(self, options):
         """Validates the model."""
         logging.debug('Validating model')
 
         errors = []
-        self.validate_users(errors)
-        self.validate_teams(errors)
+        self.validate_users(options, errors)
+        self.validate_teams(options, errors)
         return errors
 
-    def validate_users(self, errors):
+    def validate_users(self, options, errors):
         """Validates the model's users.
 
         Makes sure that each user belongs to at least one team.
@@ -555,13 +563,13 @@ class Model:
                 logging.error(f'{user.username} does not belong to any teams')
                 errors.append(NoTeam(user.username, user.authentication_provider_name))
 
-    def validate_teams(self, errors):
+    def validate_teams(self, options, errors):
         """Validates this model's teams."""
         logging.debug('Validating teams')
         for team in self.teams:
-            self.validate_team(team, errors)
+            self.validate_team(team, options, errors)
 
-    def validate_team(self, team, errors):
+    def validate_team(self, team, options, errors):
         """Validates the specified team.
 
         Makes sure that all the user references are valid.
@@ -569,7 +577,37 @@ class Model:
         logging.debug(f'Validating team {team.full_name}')
         for user_ref in team.users:
             if user_ref not in self.users:
-                errors.append(MissingUser(user_ref))
+                if options.retrieve_user_entries:
+                    self.retrieve_user_entries(user_ref, options, errors)
+                else:
+                    logging.error(f'{user_ref} not in users file')
+                    errors.append(MissingUser(user_ref))
+
+    def retrieve_user_entries(self, user_ref, options, errors):
+        """Retrieve user entries from an LDAP server."""
+        logging.debug(f'Attempting to retrieve {user_ref.username} from {user_ref.authentication_provider_name}')
+        ldap_server_id = authentication_provider_manager.get_ldap_server_id(user_ref.authentication_provider_name)
+        user_entries = ac_api.get_user_entries_by_search_criteria(ldap_server_id, user_ref.username)
+        for user_entry in user_entries:
+            logging.debug(f'User_entry: {user_entry}')
+            if user_entry.username == user_ref.username:
+                logging.debug(f'Found user entry for {user_ref.username}')
+                self.add_user_entry(user_ref, user_entry, options)
+                return
+
+        logging.error(f'Cannot find user with username {user_ref.username} in {user_ref.authentication_provider_name}')
+        errors.append(MissingLDAPUser(user_ref))
+
+    def add_user_entry(self, user_ref, user_entry, options):
+
+        user = User(user_ref.username,
+                    user_ref.authentication_provider_name,
+                    user_entry.email,
+                    user_entry.first_name,
+                    user_entry.last_name)
+        logging.debug(f'Adding {user} to self.users')
+        self.users.append(user)
+        self.users.save(options.data_dir)
 
     def apply_changes(self, new_model, dry_run):
         """Applies the changes needed to make this model match the new model.
@@ -796,6 +834,7 @@ class AuthenticationProviderManager:
     def __init__(self, ac_api):
 
         self.authentication_providers = ac_api.get_all_authentication_providers()
+        self.ldap_servers = ac_api.get_all_ldap_servers()
 
     def name_from_id(self, provider_id):
         """Returns the authentication provider name that corresponds to
@@ -823,6 +862,14 @@ class AuthenticationProviderManager:
                 return True
 
         return False
+
+    def get_ldap_server_id(self, ldap_server_name):
+
+        for ldap_server in self.ldap_servers:
+            if ldap_server.name == ldap_server_name:
+                return ldap_server.id
+
+        raise ValueError(f'{ldap_server_name}: invalid LDAP server name')
 
 
 class InvalidRole:
@@ -862,6 +909,23 @@ class NoTeam:
     def __repr__(self):
 
         return f'NoTeam({self.username}, {self.authentication_provider_name})'
+
+
+class MissingLDAPUser:
+    """A missing LDAP user.
+
+    I.e., the user referred to by the user reference cannot be found
+    in the LDAP server associated with the reference.
+
+    """
+
+    def __init__(self, user_ref):
+
+        self.user_ref = user_ref
+
+    def __repr__(self):
+
+        return f'MissingLDAPUser({self.user_ref})'
 
 
 class MissingUser:
@@ -945,7 +1009,7 @@ def validate(options):
     """Validates a model specified by YAML files."""
     logging.info(f'Validating files in {options.data_dir}')
     model = Model.load(options.data_dir)
-    errors = model.validate()
+    errors = model.validate(options)
     if errors:
         logging.error('Model failed validation')
         raise ModelValidationError(errors)
@@ -1059,6 +1123,9 @@ if __name__ == '__main__':
     validate_parser = subparsers.add_parser('validate')
     validate_parser.add_argument('-d', '--data-dir', type=str, default='.',
                                  help='Data directory')
+    validate_parser.add_argument('-r', '--retrieve-user-entries',
+                                 action='store_true', default=False,
+                                 help='Retrieve user entries')
     validate_parser.set_defaults(func=validate)
 
     args = parser.parse_args([arg for arg in sys.argv[1:]

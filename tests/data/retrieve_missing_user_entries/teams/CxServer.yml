@@ -1,0 +1,5 @@
+name: CxServer
+full_name: /CxServer
+users:
+  - authentication_provider_name: CxMGMTaC
+    username: nosuchuser
