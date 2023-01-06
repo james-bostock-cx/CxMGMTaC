@@ -183,3 +183,27 @@ file may be specified using the `--log-config` command line option.
 See the [Python
 documentation](https://docs.python.org/3/library/logging.config.html#logging-config-fileformat)
 for a description of the logging configuration file format.
+
+# Unit Testing
+
+The `test.py` script in the `tests` directory runs the unit test
+suite. The unit tests use mock responses from CxSAST so the unit test
+suite can be run without access to a live CxSAST instance.
+
+The default log level for the unit test suite is `WARNING`. To change
+this, set the `LOG_LEVEL` environment variable to the desired log
+level. For example:
+
+```
+$ LOG_LEVEL=INFO py -3.10 test.py
+INFO | retrieve_from_access_control: Retrieving user and team data from Access Control
+INFO | apply_changes: Applying changes
+INFO | add_teams: Adding teams
+INFO | create_team: Creating team test4 under parent 1
+INFO | add_users: Adding users
+INFO | update_users: Updating users
+INFO | delete_users: Deleting users
+INFO | delete_teams: Deleting teams
+.INFO | retrieve_from_access_control: Retrieving user and team data from Access Control
+...
+```

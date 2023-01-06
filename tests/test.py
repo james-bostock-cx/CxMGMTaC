@@ -21,7 +21,12 @@ config['base_url'] = 'http://localhost'
 config['username'] = 'unittest'
 config['password'] = '********'
 
-logging.basicConfig(level=logging.DEBUG,
+# Set logging level
+try:
+    level_str = os.environ['LOG_LEVEL']
+except KeyError:
+    level_str = 'WARNING'
+logging.basicConfig(level=logging.getLevelName(level_str),
                     format='%(levelname)s | %(funcName)s: %(message)s')
 
 CREATION_DATE = 'creationDate'
