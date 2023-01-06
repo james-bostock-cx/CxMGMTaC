@@ -377,7 +377,6 @@ class User:
 
         if old_team_ids != new_team_ids:
             updates[TEAM_IDS] = new_team_ids
-            print(f'User {self.username}: team_ids has changed from {old_team_ids} to {new_team_ids}')
             logging.debug(f'User {self.username}: team_ids has changed from {old_team_ids} to {new_team_ids}')
             found_updates = True
         else:

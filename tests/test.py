@@ -176,7 +176,7 @@ class MockCxSAST:
     def get_next_id(self, items):
 
         next_id = max(item[ID] for item in items) + 1
-        print(f'next_id: {next_id}')
+        logging.debug(f'next_id: {next_id}')
         return next_id
 
     def generate_team_full_name(self, team):
@@ -203,9 +203,9 @@ def mocked_requests_request(*args, **kwargs):
         def json(self):
             return self.json_data
 
-    print(f'kwargs: {kwargs}')
+    logging.debug(f'kwargs: {kwargs}')
     response_code, data = mockCxSAST.handle_request(kwargs)
-    print(f'response_code: {response_code}, data: {data}')
+    logging.debug(f'response_code: {response_code}, data: {data}')
     return MockResponse(data, response_code)
 
 
@@ -292,7 +292,6 @@ class TestCxMGMTaC(unittest.TestCase):
         model = CxMGMTaC.Model.load(Path("data") / Path("missing_locale_id"))
         options = Options(None, False)
         errors = model.validate(options)
-        print(f'errors: {errors}')
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.MissingUserProperty))
 
@@ -303,7 +302,6 @@ class TestCxMGMTaC(unittest.TestCase):
         model = CxMGMTaC.Model.load(Path("data") / Path("missing_user"))
         options = Options(None, False)
         errors = model.validate(options)
-        print(f'errors: {errors}')
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.MissingUser))
 
@@ -344,8 +342,6 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_add_team_with_user(self, mock_get):
 
         self.update_common(Path("data") / Path("add_team_with_user"))
-        for req in mockCxSAST.requests:
-            print(f'*** request: {req}')
         self.assertEqual(5, len(mockCxSAST.requests),
                          'Expected exactly four requests')
         request = mockCxSAST.requests[2]
