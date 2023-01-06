@@ -618,7 +618,7 @@ class Model:
                     user_entry.last_name)
         logging.debug(f'Adding {user} to self.users')
         self.users.append(user)
-        self.users.save(options.data_dir)
+        self.save_users(options.data_dir)
 
     def apply_changes(self, new_model, dry_run):
         """Applies the changes needed to make this model match the new model.
@@ -785,15 +785,35 @@ class Model:
 
     def save(self, dirname='.'):
         """Saves this model to the specified directory."""
+        self.save_teams(dirname)
+        self.save_users(dirname)
+
+    def create_dest_dir(self, dirname='.'):
+        """Creates the directory to which the model is to be saved."""
         dir_path = pathlib.Path(dirname)
         dir_path.mkdir(exist_ok=True)
-        users_dir_path = dir_path / pathlib.Path('users')
-        users_dir_path.mkdir(exist_ok=True)
-        self.users.save(users_dir_path)
+        return dir_path
+
+    def save_teams(self, dirname='.'):
+        """Saves the model's teams to the specified directory.
+
+        Note that the teams are saved to a 'teams' subdirectory.
+        """
+        dir_path = self.create_dest_dir(dirname)
         teams_dir_path = dir_path / pathlib.Path('teams')
         teams_dir_path.mkdir(exist_ok=True)
         for team in self.teams:
             team.save(teams_dir_path)
+
+    def save_users(self, dirname='.'):
+        """Saves the model's users to the specified directory.
+
+        Note that the users are saved to a 'users' subdirectory.
+        """
+        dir_path = self.create_dest_dir(dirname)
+        users_dir_path = dir_path / pathlib.Path('users')
+        users_dir_path.mkdir(exist_ok=True)
+        self.users.save(users_dir_path)
 
 
 class RoleManager:

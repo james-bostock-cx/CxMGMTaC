@@ -4,6 +4,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import shutil
 import sys
 import unittest
 from unittest import mock
@@ -437,7 +438,7 @@ class TestCxMGMTaC(unittest.TestCase):
         model = CxMGMTaC.Model.load(Path("data") / Path("retrieve_user_entries"))
         errors = model.validate(options)
         self.assertEqual(0, len(errors))
-        with open('users.yml', 'r') as f:
+        with open(Path('users') / Path('users.yml'), 'r') as f:
             users = yaml.load(f, Loader=yaml.CLoader)
             found = False
             for user in users['users']:
@@ -448,7 +449,7 @@ class TestCxMGMTaC(unittest.TestCase):
                     found = True
                     break
         self.assertTrue(found, 'Could not find user in users.yml')
-        os.remove('users.yml')
+        shutil.rmtree('users')
         self.assertEqual(1, len(mockCxSAST.requests),
                          'Expected exactly one request')
         request = mockCxSAST.requests[0]
