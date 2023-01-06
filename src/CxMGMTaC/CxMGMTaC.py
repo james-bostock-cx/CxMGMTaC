@@ -491,23 +491,34 @@ class Model:
                          map is rebuilt when changes are made to the teams.
     """
 
-    def __init__(self, teams, users):
+    def __init__(self, teams, users, build_maps=False):
 
         self.teams = teams
         self.users = users
         self.team_map = {}
         self.user_team_ids_map = {}
         self.user_map = {}
-        for team in teams:
+
+        if build_maps:
+            errors = []
+            self.build_maps(errors)
+            if errors:
+                raise RuntimeError(f'Error(s) building maps: {errors}')
+
+    def build_maps(self, errors):
+        """Builds maps that help with processing."""
+
+        for team in self.teams:
             if team.full_name in self.team_map:
                 # TODO throw exception
                 logging.error(f'Cannot have two teams with the same full name ({team.full_name})')
+                errors.append(DuplicateTeam(team.full_name))
             self.team_map[team.full_name] = team
-        for user in users.users:
+        for user in self.users.users:
             key = UserReference(user.username, user.authentication_provider_name)
             if key in self.user_map:
-                # TODO throw exception
-                logging.error(f'Cannot have two users with the same username and autentication provider ({key})')
+                logging.error(f'Cannot have two users with the same username and authentication provider ({key})')
+                errors.append(DuplicateUser(key))
             self.user_map[key] = user
         self.update_user_team_ids_map()
 
@@ -545,6 +556,7 @@ class Model:
         logging.debug('Validating model')
 
         errors = []
+        self.build_maps(errors)
         self.validate_users(options, errors)
         self.validate_teams(options, errors)
         return errors
@@ -759,7 +771,7 @@ class Model:
                 user_ref = UserReference(cx_user.username, authentication_provider_name)
                 team.users.append(user_ref)
 
-        return Model(teams, users)
+        return Model(teams, users, build_maps=True)
 
     @staticmethod
     def load(dirname):
@@ -869,6 +881,30 @@ class AuthenticationProviderManager:
                 return ldap_server.id
 
         raise ValueError(f'{ldap_server_name}: invalid LDAP server name')
+
+
+class DuplicateTeam:
+    """More than one team have the same full name."""
+
+    def __init__(self, team_full_name):
+
+        self.team_full_name = team_full_name
+
+    def __repr__(self):
+
+        return f'DuplicateTeam({self.team_full_name})'
+
+
+class DuplicateUser:
+    """More than one user have the same username and authentication provider."""
+
+    def __init__(self, user_reference):
+
+        self.user_reference = user_reference
+
+    def __repr__(self):
+
+        return f'DuplicateUser({self.user_reference})'
 
 
 class InvalidRole:

@@ -1,0 +1,5 @@
+full_name: /team1
+name: team1
+users:
+  - authentication_provider_name: Application
+    username: testuser

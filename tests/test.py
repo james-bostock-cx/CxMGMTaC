@@ -332,6 +332,24 @@ class TestCxMGMTaC(unittest.TestCase):
 
     @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
                 side_effect=mocked_requests_request)
+    def test_duplicate_team_full_name(self, mock_get):
+
+        model = CxMGMTaC.Model.load(Path("data") / Path("duplicate_team_full_name"))
+        options = Options(None, False)
+        errors = model.validate(options)
+        self.assertEqual(1, len(errors))
+
+    @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
+                side_effect=mocked_requests_request)
+    def test_duplicate_user(self, mock_get):
+
+        model = CxMGMTaC.Model.load(Path("data") / Path("duplicate_user"))
+        options = Options(None, False)
+        errors = model.validate(options)
+        self.assertEqual(1, len(errors))
+
+    @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
+                side_effect=mocked_requests_request)
     def test_add_team(self, mock_get):
 
         self.update_common(Path("data") / Path("add_team"))

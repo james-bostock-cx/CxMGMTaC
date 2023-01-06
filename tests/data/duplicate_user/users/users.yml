@@ -1,0 +1,14 @@
+default_active: true
+default_locale_id: 1
+default_roles: []
+users:
+  - authentication_provider_name: Application
+    email: test.user@local.domain
+    first_name: test
+    last_name: user
+    username: testuser
+  - authentication_provider_name: Application
+    email: test.user@local.domain
+    first_name: test
+    last_name: user
+    username: testuser
