@@ -192,10 +192,10 @@ suite can be run without access to a live CxSAST instance.
 
 The default log level for the unit test suite is `WARNING`. To change
 this, set the `LOG_LEVEL` environment variable to the desired log
-level. For example:
+level. For example (on Windows):
 
 ```
-$ LOG_LEVEL=INFO py -3.10 test.py
+$ LOG_LEVEL=INFO py test.py
 INFO | retrieve_from_access_control: Retrieving user and team data from Access Control
 INFO | apply_changes: Applying changes
 INFO | add_teams: Adding teams
