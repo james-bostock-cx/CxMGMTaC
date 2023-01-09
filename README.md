@@ -127,7 +127,7 @@ The data for each team is stored in a YAML file.
 
 The following properties are mandatory:
 
-- `full\_name`
+- `full_name`
 - `name`
 
 - `users`
@@ -136,7 +136,7 @@ The following properties are mandatory:
 
 All user entries must provide values for the following properties:
 
-- `authentication\_provider\_name`
+- `authentication_provider_name`
 - `username`
 
 ## Example
@@ -159,10 +159,10 @@ The following property is mandatory:
 
 The following properties are optional:
 
-- `default\_active`
-- `default\_authentication\_provider\_name`
-- `default\_locale\_id`
-- `default\_roles`
+- `default_active`
+- `default_authentication_provider_name`
+- `default_locale_id`
+- `default_roles`
 
 If any of these properties are present, for a user entry that lacks
 the corresponding property, the value of this property is used.
