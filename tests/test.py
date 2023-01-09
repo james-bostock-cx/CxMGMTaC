@@ -447,6 +447,10 @@ class TestCxMGMTaC(unittest.TestCase):
                     and user['first_name'] == 'test'
                     and user['last_name'] == 'user'):
                     found = True
+                    # The following have default values specified at
+                    # the top-level of the users.yml file.
+                    self.assertNotIn('active', user)
+                    self.assertNotIn('locale_id', user)
                     break
         self.assertTrue(found, 'Could not find user in users.yml')
         shutil.rmtree('users')
@@ -473,6 +477,118 @@ class TestCxMGMTaC(unittest.TestCase):
         self.assertEqual('GET', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/LDAPServers/3/UserEntries?userNameContainsPattern=nosuchuser',
                          request['url'])
+
+    def test_user_to_dict(self):
+
+        user = CxMGMTaC.User('testuser', 'Application',
+                             email='testuser@local.domain',
+                             first_name='test',
+                             last_name='user',
+                             locale_id=1,
+                             roles=['SAST Reviewer'],
+                             active=True)
+        d = user.to_dict()
+        self.assertEqual(d[CxMGMTaC.ACTIVE], True)
+        self.assertEqual(d[CxMGMTaC.AUTHENTICATION_PROVIDER_NAME],
+                         'Application')
+        self.assertNotIn(CxMGMTaC.CELL_PHONE_NUMBER, d)
+        self.assertNotIn(CxMGMTaC.COUNTRY, d)
+        self.assertEqual(d[CxMGMTaC.EMAIL], 'testuser@local.domain')
+        self.assertNotIn(CxMGMTaC.EXPIRATION_DATE, d)
+        self.assertEqual(d[CxMGMTaC.FIRST_NAME], 'test')
+        self.assertNotIn(CxMGMTaC.JOB_TITLE, d)
+        self.assertEqual(d[CxMGMTaC.LOCALE_ID], 1)
+        self.assertEqual(d[CxMGMTaC.LAST_NAME], 'user')
+        self.assertNotIn(CxMGMTaC.OTHER, d)
+        self.assertNotIn(CxMGMTaC.PHONE_NUMBER, d)
+        self.assertEqual(d[CxMGMTaC.ROLES], ['SAST Reviewer'])
+        self.assertEqual(d[CxMGMTaC.USERNAME], 'testuser')
+
+    def test_user_to_dict_false_values(self):
+
+        user = CxMGMTaC.User('testuser', 'Application',
+                             email='testuser@local.domain',
+                             first_name='test',
+                             last_name='user',
+                             locale_id=1,
+                             roles=['SAST Reviewer'],
+                             active=True,
+                             allowed_ip_list=[],
+                             cell_phone_number='',
+                             country='',
+                             expiration_date='',
+                             job_title='',
+                             other='',
+                             phone_number='')
+        d = user.to_dict()
+        self.assertEqual(d[CxMGMTaC.ACTIVE], True)
+        self.assertEqual(d[CxMGMTaC.AUTHENTICATION_PROVIDER_NAME],
+                         'Application')
+        self.assertNotIn(CxMGMTaC.CELL_PHONE_NUMBER, d)
+        self.assertNotIn(CxMGMTaC.COUNTRY, d)
+        self.assertEqual(d[CxMGMTaC.EMAIL], 'testuser@local.domain')
+        self.assertNotIn(CxMGMTaC.EXPIRATION_DATE, d)
+        self.assertEqual(d[CxMGMTaC.FIRST_NAME], 'test')
+        self.assertNotIn(CxMGMTaC.JOB_TITLE, d)
+        self.assertEqual(d[CxMGMTaC.LOCALE_ID], 1)
+        self.assertEqual(d[CxMGMTaC.LAST_NAME], 'user')
+        self.assertNotIn(CxMGMTaC.OTHER, d)
+        self.assertNotIn(CxMGMTaC.PHONE_NUMBER, d)
+        self.assertEqual(d[CxMGMTaC.ROLES], ['SAST Reviewer'])
+        self.assertEqual(d[CxMGMTaC.USERNAME], 'testuser')
+
+    def test_user_to_dict_default_active(self):
+
+        user = CxMGMTaC.User('testuser', 'Application',
+                             email='testuser@local.domain',
+                             first_name='test',
+                             last_name='user',
+                             locale_id=1,
+                             roles=['SAST Reviewer'])
+        d = user.to_dict(default_active=True)
+        self.assertNotIn(CxMGMTaC.ACTIVE, d)
+        self.assertEqual(d[CxMGMTaC.AUTHENTICATION_PROVIDER_NAME], 'Application')
+        self.assertEqual(d[CxMGMTaC.EMAIL], 'testuser@local.domain')
+        self.assertEqual(d[CxMGMTaC.FIRST_NAME], 'test')
+        self.assertEqual(d[CxMGMTaC.LOCALE_ID], 1)
+        self.assertEqual(d[CxMGMTaC.LAST_NAME], 'user')
+        self.assertEqual(d[CxMGMTaC.ROLES], ['SAST Reviewer'])
+
+    def test_user_to_dict_default_locale_id(self):
+
+        user = CxMGMTaC.User('testuser', 'Application',
+                             email='testuser@local.domain',
+                             first_name='test',
+                             last_name='user',
+                             roles=['SAST Reviewer'],
+                             active=True)
+        d = user.to_dict(default_locale_id=1)
+        self.assertEqual(d[CxMGMTaC.ACTIVE], True)
+        self.assertEqual(d[CxMGMTaC.AUTHENTICATION_PROVIDER_NAME],
+                         'Application')
+        self.assertEqual(d[CxMGMTaC.EMAIL], 'testuser@local.domain')
+        self.assertEqual(d[CxMGMTaC.FIRST_NAME], 'test')
+        self.assertNotIn(CxMGMTaC.LOCALE_ID, d)
+        self.assertEqual(d[CxMGMTaC.LAST_NAME], 'user')
+        self.assertEqual(d[CxMGMTaC.ROLES], ['SAST Reviewer'])
+
+    def test_user_to_dict_default_roles(self):
+
+        user = CxMGMTaC.User('testuser', 'Application',
+                             email='testuser@local.domain',
+                             first_name='test',
+                             last_name='user',
+                             locale_id=1,
+                             active=True)
+        d = user.to_dict(default_roles={'SAST Reviewer'})
+        self.assertEqual(d[CxMGMTaC.ACTIVE], True)
+        self.assertEqual(d[CxMGMTaC.AUTHENTICATION_PROVIDER_NAME],
+                         'Application')
+        self.assertEqual(d[CxMGMTaC.EMAIL], 'testuser@local.domain')
+        self.assertEqual(d[CxMGMTaC.FIRST_NAME], 'test')
+        self.assertEqual(d[CxMGMTaC.LOCALE_ID], 1)
+        self.assertEqual(d[CxMGMTaC.LAST_NAME], 'user')
+        self.assertNotIn(CxMGMTaC.ROLES, d)
 
     def update_common(self, path):
 

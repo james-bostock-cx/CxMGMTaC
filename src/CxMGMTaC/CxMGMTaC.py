@@ -331,9 +331,14 @@ class User:
         logging.debug(f'User.to_dict: kwargs: {kwargs}')
         d = {}
         for attr, f, mandatory in self.attrs:
-            if f is bool or getattr(self, attr):
-                d[attr] = f(getattr(self, attr))
-            elif mandatory and kwargs.get(f'default_{attr}') is None:
+            value = getattr(self, attr)
+            default_attr = f'default_{attr}'
+            default_value = kwargs.get(default_attr)
+            logging.debug(f'attr: {attr}, f: {f}, mandatory: {mandatory}, value: {value}, default_attr: {default_attr}, default_value: {default_value}')
+            if value is not None:
+                if value != default_value and (f is bool or value):
+                    d[attr] = f(value)
+            elif default_value is None and mandatory:
                 raise ValueError(f'{attr} attribute is mandatory')
 
         return d
