@@ -190,7 +190,10 @@ class Users:
         self.default_active = default_active
         self.default_authentication_provider_name = default_authentication_provider_name
         self.default_locale_id = default_locale_id
-        self.default_roles = default_roles
+        if default_roles:
+            self.default_roles = set(default_roles)
+        else:
+            self.default_roles = set()
 
     @staticmethod
     def load(filename):
