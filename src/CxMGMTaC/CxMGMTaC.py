@@ -339,7 +339,10 @@ class User:
             logging.debug(f'attr: {attr}, f: {f}, mandatory: {mandatory}, value: {value}, default_attr: {default_attr}, default_value: {default_value}')
             if value is not None:
                 if value != default_value and (f is bool or value):
-                    d[attr] = f(value)
+                    if f is list:
+                        d[attr] = f(sorted(value))
+                    else:
+                        d[attr] = f(value)
             elif default_value is None and mandatory:
                 raise ValueError(f'{attr} attribute is mandatory')
 
