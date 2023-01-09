@@ -82,6 +82,35 @@ consistency checks.
 C:\...\> py CxMGMTaC.py validate -d data
 ```
 
+## Retrieving User Details from an LDAP Server
+
+The validate mode can optionally retrieve user details from an LDAP
+server. This is enabled by passing either the `-r` or
+`--retrieve-user-entries` command line option. If one of thes options
+i passed and a user reference is found in a team file for which there
+is not corresponding user entry in the `users.yml` file, the script
+will try to retrieve the user’s details from the LDAP server specified
+in the user reference.
+
+The following fields are retrieved from the LDAP server:
+
+* `email`
+* `first_name`
+* `last_name`
+* `username`
+
+The validate mode writes an updated copy of the `users.yml` file with
+a new entry for the user retrieved from the LDAP server. As the
+`active` and `locale_id` fields are mandatory, default values for
+these fields must be provided in the `users.yml` file otherwise the
+new user entry will be invalid.
+
+### Example
+
+```
+C:\...\> py CxMGMTaC.py validate -d data -r
+```
+
 # Directory Structure and File Formats
 
 The `CxMGMTaC.py` script, when run in `extract` mode, will crate two
