@@ -579,7 +579,8 @@ class TestCxMGMTaC(unittest.TestCase):
                              first_name='test',
                              last_name='user',
                              locale_id=1,
-                             active=True)
+                             active=True,
+                             roles={'SAST Reviewer'})
         d = user.to_dict(default_roles={'SAST Reviewer'})
         self.assertEqual(d[CxMGMTaC.ACTIVE], True)
         self.assertEqual(d[CxMGMTaC.AUTHENTICATION_PROVIDER_NAME],
