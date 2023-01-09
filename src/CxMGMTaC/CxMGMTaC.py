@@ -3,7 +3,7 @@
 Note: currently, only management of teams and users is supported.
 """
 
-__version__ = "1.0.0-SNAPSHOT"
+__version__ = '1.0.0'
 
 import argparse
 from collections import namedtuple
