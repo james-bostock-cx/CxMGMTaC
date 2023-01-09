@@ -131,7 +131,6 @@ The following property is mandatory:
 The following properties are optional:
 
 - `default\_active`
-- `default\_allowed\_ip\_list`
 - `default\_authentication\_provider\_name`
 - `default\_locale\_id`
 - `default\_roles`
