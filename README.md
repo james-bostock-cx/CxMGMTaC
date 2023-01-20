@@ -105,6 +105,32 @@ a new entry for the user retrieved from the LDAP server. As the
 these fields must be provided in the `users.yml` file otherwise the
 new user entry will be invalid.
 
+If the user entry retrieved from the LDAP server has a `first_name`
+field whose value is `null`, the value of the `username` field is
+used.
+
+If the user entry retrieved from the LDAP server has a `last_name`
+field whose value is `null`, the value of the `username` field is
+used.
+
+If the user entry retrieved from the LDAP server has an `email` field
+whose value is `null`, a dummy email address is used comprised of the
+`username` field and the user reference’s
+`authentication_provider_name` field.
+
+For example, given the following user reference:
+
+```
+- authentication_provider_name: CorpDirectory
+  username: testuser
+```
+
+If the user entry retrieved from the LDAP server had an `email` field with a value of `null`, the following value would be used:
+
+```
+testuser@CorpDirectory
+```
+
 ### Example
 
 ```

@@ -57,8 +57,10 @@ class MockCxSAST:
         with open(self.responses_dir / Path('ldap_servers.json'), 'r') as f:
             self.ldap_servers = json.load(f)
 
-        with open(self.responses_dir / Path('ldap_user_entries.json'), 'r') as f:
-            self.ldap_user_entries = json.load(f)
+        self.ldap_user_entries = {}
+        for file in (self.responses_dir / Path('ldap_user_entries')).glob('*.json'):
+            with open(file, 'r') as f:
+                self.ldap_user_entries[file.stem] = json.load(f)
 
         with open(self.responses_dir / Path('roles.json'), 'r') as f:
             self.roles = json.load(f)
@@ -120,8 +122,9 @@ class MockCxSAST:
             elif len(bits) == 8 and bits[7].startswith('UserEntries'):
                 ldap_server_id = int(bits[6])
                 username_contains_pattern = bits[7]
-                if ldap_server_id == 3 and username_contains_pattern == 'UserEntries?userNameContainsPattern=testuser':
-                    return (200, self.ldap_user_entries)
+                username = username_contains_pattern.split('=')[1]
+                if ldap_server_id == 3 and username in self.ldap_user_entries:
+                    return (200, self.ldap_user_entries[username])
                 else:
                     return (200, [])
             else:
@@ -459,6 +462,105 @@ class TestCxMGMTaC(unittest.TestCase):
         request = mockCxSAST.requests[0]
         self.assertEqual('GET', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/LDAPServers/3/UserEntries?userNameContainsPattern=testuser',
+                         request['url'])
+
+    @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
+                side_effect=mocked_requests_request)
+    def test_retrieve_user_entries_no_email(self, mock_get):
+        '''Test the retrieval of user data from the LDAP server where
+        the user does not have an email address.'''
+
+        options = Options('.', True)
+        model = CxMGMTaC.Model.load(Path("data") / Path("retrieve_user_entries_no_email"))
+        errors = model.validate(options)
+        self.assertEqual(0, len(errors))
+        with open(Path('users') / Path('users.yml'), 'r') as f:
+            users = yaml.load(f, Loader=yaml.CLoader)
+            found = False
+            for user in users['users']:
+                if (user['username'] == 'noemail'
+                    and user['email'] == 'noemail@CxMGMTaC'
+                    and user['first_name'] == 'test'
+                    and user['last_name'] == 'user'):
+                    found = True
+                    # The following have default values specified at
+                    # the top-level of the users.yml file.
+                    self.assertNotIn('active', user)
+                    self.assertNotIn('locale_id', user)
+                    break
+        self.assertTrue(found, 'Could not find user in users.yml')
+        shutil.rmtree('users')
+        self.assertEqual(1, len(mockCxSAST.requests),
+                         'Expected exactly one request')
+        request = mockCxSAST.requests[0]
+        self.assertEqual('GET', request['method'])
+        self.assertEqual('http://localhost/cxrestapi/auth/LDAPServers/3/UserEntries?userNameContainsPattern=noemail',
+                         request['url'])
+
+    @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
+                side_effect=mocked_requests_request)
+    def test_retrieve_user_entries_no_first_name(self, mock_get):
+        '''Test the retrieval of user data from the LDAP server where
+        the user does not have a first name.'''
+
+        options = Options('.', True)
+        model = CxMGMTaC.Model.load(Path("data") / Path("retrieve_user_entries_no_first_name"))
+        errors = model.validate(options)
+        self.assertEqual(0, len(errors))
+        with open(Path('users') / Path('users.yml'), 'r') as f:
+            users = yaml.load(f, Loader=yaml.CLoader)
+            found = False
+            for user in users['users']:
+                if (user['username'] == 'nofirstname'
+                    and user['email'] == 'nofirstname@cxmgmtac.com'
+                    and user['first_name'] == 'nofirstname'
+                    and user['last_name'] == 'user'):
+                    found = True
+                    # The following have default values specified at
+                    # the top-level of the users.yml file.
+                    self.assertNotIn('active', user)
+                    self.assertNotIn('locale_id', user)
+                    break
+        self.assertTrue(found, 'Could not find user in users.yml')
+        shutil.rmtree('users')
+        self.assertEqual(1, len(mockCxSAST.requests),
+                         'Expected exactly one request')
+        request = mockCxSAST.requests[0]
+        self.assertEqual('GET', request['method'])
+        self.assertEqual('http://localhost/cxrestapi/auth/LDAPServers/3/UserEntries?userNameContainsPattern=nofirstname',
+                         request['url'])
+
+    @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
+                side_effect=mocked_requests_request)
+    def test_retrieve_user_entries_no_last_name(self, mock_get):
+        '''Test the retrieval of user data from the LDAP server where
+        the user does not have a last name.'''
+
+        options = Options('.', True)
+        model = CxMGMTaC.Model.load(Path("data") / Path("retrieve_user_entries_no_last_name"))
+        errors = model.validate(options)
+        self.assertEqual(0, len(errors))
+        with open(Path('users') / Path('users.yml'), 'r') as f:
+            users = yaml.load(f, Loader=yaml.CLoader)
+            found = False
+            for user in users['users']:
+                if (user['username'] == 'nolastname'
+                    and user['email'] == 'nolastname@cxmgmtac.com'
+                    and user['first_name'] == 'test'
+                    and user['last_name'] == 'nolastname'):
+                    found = True
+                    # The following have default values specified at
+                    # the top-level of the users.yml file.
+                    self.assertNotIn('active', user)
+                    self.assertNotIn('locale_id', user)
+                    break
+        self.assertTrue(found, 'Could not find user in users.yml')
+        shutil.rmtree('users')
+        self.assertEqual(1, len(mockCxSAST.requests),
+                         'Expected exactly one request')
+        request = mockCxSAST.requests[0]
+        self.assertEqual('GET', request['method'])
+        self.assertEqual('http://localhost/cxrestapi/auth/LDAPServers/3/UserEntries?userNameContainsPattern=nolastname',
                          request['url'])
 
     @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',

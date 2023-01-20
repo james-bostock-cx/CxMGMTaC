@@ -613,6 +613,15 @@ class Model:
             logging.debug(f'User_entry: {user_entry}')
             if user_entry.username == user_ref.username:
                 logging.debug(f'Found user entry for {user_ref.username}')
+                if not user_entry.first_name:
+                    user_entry.first_name = user_entry.username
+                    logging.debug(f'User entry for {user_ref.username} does not contain a first name. Using {user_entry.first_name}')
+                if not user_entry.last_name:
+                    user_entry.last_name = user_entry.username
+                    logging.debug(f'User entry for {user_ref.username} does not contain a last name. Using {user_entry.last_name}')
+                if not user_entry.email:
+                    user_entry.email = f'{user_entry.username}@{user_ref.authentication_provider_name}'
+                    logging.debug(f'User entry for {user_ref.username} does not contain an email. Using {user_entry.email}')
                 self.add_user_entry(user_ref, user_entry, options)
                 return
 
