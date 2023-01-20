@@ -261,3 +261,10 @@ INFO | delete_teams: Deleting teams
 .INFO | retrieve_from_access_control: Retrieving user and team data from Access Control
 ...
 ```
+
+# Building Releases with Dependencies
+
+The releases of the `CxMGMTaC.py` script include a release file that
+includes third party dependencies (in the form of *wheel* files) for
+offline installation. These releases are created using the
+`make-release.sh` script in the `tools` directory.
