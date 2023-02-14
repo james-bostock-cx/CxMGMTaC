@@ -426,6 +426,22 @@ class TestCxMGMTaC(unittest.TestCase):
 
     @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
                 side_effect=mocked_requests_request)
+    def test_add_users(self, mock_get):
+
+        self.update_common(Path("data") / Path("add_users"))
+        self.assertEqual(4, len(mockCxSAST.requests),
+                         'Expected exactly three requests')
+        request = mockCxSAST.requests[2]
+        self.assertEqual('POST', request['method'])
+        self.assertEqual('http://localhost/cxrestapi/auth/Users',
+                         request['url'])
+        request = mockCxSAST.requests[3]
+        self.assertEqual('POST', request['method'])
+        self.assertEqual('http://localhost/cxrestapi/auth/Users',
+                         request['url'])
+
+    @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
+                side_effect=mocked_requests_request)
     def test_delete_user(self, mock_get):
 
         self.update_common(Path("data") / Path("delete_user"))
@@ -434,6 +450,22 @@ class TestCxMGMTaC(unittest.TestCase):
         request = mockCxSAST.requests[2]
         self.assertEqual('DELETE', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/Users/11019',
+                         request['url'])
+
+    @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
+                side_effect=mocked_requests_request)
+    def test_delete_users(self, mock_get):
+
+        self.update_common(Path("data") / Path("delete_users"))
+        self.assertEqual(4, len(mockCxSAST.requests),
+                         'Expected exactly three requests')
+        request = mockCxSAST.requests[2]
+        self.assertEqual('DELETE', request['method'])
+        self.assertEqual('http://localhost/cxrestapi/auth/Users/11019',
+                         request['url'])
+        request = mockCxSAST.requests[3]
+        self.assertEqual('DELETE', request['method'])
+        self.assertEqual('http://localhost/cxrestapi/auth/Users/11015',
                          request['url'])
 
     @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',

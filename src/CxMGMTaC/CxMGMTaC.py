@@ -22,6 +22,7 @@ __version__ = '1.1.0'
 import argparse
 from collections import namedtuple
 import copy
+from functools import total_ordering
 import logging
 import logging.config
 import os
@@ -441,6 +442,7 @@ class User:
         return f'User({self.username}, {self.email}, {self.first_name}, {self.last_name}, {self.authentication_provider_name}, {self.locale_id}, {self.roles}, {self.active}, {self.allowed_ip_list, self.cell_phone_number, self.country, self.expiration_date, self.job_title, self.other, self.phone_number, self.user_id})'
 
 
+@total_ordering
 class UserReference:
     """A reference to a user.
 
@@ -463,6 +465,16 @@ class UserReference:
     def __hash__(self):
         """Returns the hash of this user reference."""
         return hash((self.username, self.authentication_provider_name))
+
+    def __eq__(self, other):
+        """Returns True if this instance is 'less' than the other instance."""
+        return ((self.username, self.authentication_provider_name) ==
+                (other.username, other.authentication_provider_name))
+
+    def __lt__(self, other):
+        """Returns True if this instance is 'less' than the other instance."""
+        return ((self.username, self.authentication_provider_name) <
+                (other.username, other.authentication_provider_name))
 
     def to_dict(self):
         """Generates a dictionary representation of the user (which leads to
