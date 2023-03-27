@@ -311,7 +311,7 @@ class User:
              Property(ROLES, list, False),
              Property(USERNAME, str, True)
             ]
-    
+
     def __init__(self, username, authentication_provider_name, email=None,
                  first_name=None, last_name=None, locale_id=None, roles=None,
                  active=None, allowed_ip_list=None, cell_phone_number=None,
