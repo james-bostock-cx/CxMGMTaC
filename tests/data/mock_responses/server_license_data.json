@@ -118,7 +118,7 @@
   "osaExpirationDate": "",
   "currentUsers": 1,
   "maxUsers": 13,
-  "maxAuditUsers": 1,
+  "maxAuditUsers": 6,
   "currentAuditUsers": 1,
   "projectsAllowed": 100,
   "currentProjectsCount": 15

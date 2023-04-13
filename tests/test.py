@@ -31,7 +31,7 @@ sys.path.insert(1, str(cwd.parents[0] / Path('src') / Path('CxMGMTaC')))
 
 # see https://stackoverflow.com/questions/15753390/how-can-i-mock-requests-and-the-response
 
-Options = namedtuple('Options', ['data_dir', 'retrieve_user_entries'])
+Options = namedtuple('Options', ['data_dir', 'retrieve_user_entries', 'use_cxaudit_permission'])
 
 from CheckmarxPythonSDK.CxRestAPISDK.config import config
 config['base_url'] = 'http://localhost'
@@ -259,7 +259,7 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_invalid_role(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("invalid_role"))
-        options = Options(None, False)
+        options = Options(None, False, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.InvalidRole))
@@ -269,7 +269,7 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_invalid_authentication_provider_name(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("invalid_authentication_provider_name"))
-        options = Options(None, False)
+        options = Options(None, False, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0],
@@ -280,7 +280,7 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_missing_active(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("missing_active"))
-        options = Options(None, False)
+        options = Options(None, False, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.MissingUserProperty))
@@ -290,7 +290,7 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_missing_email(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("missing_email"))
-        options = Options(None, False)
+        options = Options(None, False, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.MissingUserProperty))
@@ -300,7 +300,7 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_missing_first_name(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("missing_first_name"))
-        options = Options(None, False)
+        options = Options(None, False, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.MissingUserProperty))
@@ -310,7 +310,7 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_missing_last_name(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("missing_last_name"))
-        options = Options(None, False)
+        options = Options(None, False, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.MissingUserProperty))
@@ -320,7 +320,7 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_missing_locale_id(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("missing_locale_id"))
-        options = Options(None, False)
+        options = Options(None, False, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.MissingUserProperty))
@@ -330,7 +330,7 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_missing_user(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("missing_user"))
-        options = Options(None, False)
+        options = Options(None, False, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.MissingUser))
@@ -340,7 +340,7 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_no_team(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("no_team"))
-        options = Options(None, False)
+        options = Options(None, False, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.NoTeam))
@@ -350,7 +350,7 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_default_authentication_provider_name(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("default_authentication_provider_name"))
-        options = Options(None, False)
+        options = Options(None, False, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         errors = model.validate(options)
         self.assertEqual(0, len(errors))
         self.assertEqual('Application', model.users.users[0].authentication_provider_name)
@@ -360,7 +360,7 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_duplicate_team_full_name(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("duplicate_team_full_name"))
-        options = Options(None, False)
+        options = Options(None, False, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         errors = model.validate(options)
         self.assertEqual(1, len(errors))
 
@@ -369,7 +369,7 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_duplicate_user(self, mock_get):
 
         model = CxMGMTaC.Model.load(Path("data") / Path("duplicate_user"))
-        options = Options(None, False)
+        options = Options(None, False, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         errors = model.validate(options)
         self.assertEqual(1, len(errors))
 
@@ -490,7 +490,7 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_retrieve_user_entries(self, mock_get):
         '''Test the retrieval of user data from the LDAP server.'''
 
-        options = Options('.', True)
+        options = Options('.', True, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         model = CxMGMTaC.Model.load(Path("data") / Path("retrieve_user_entries"))
         errors = model.validate(options)
         self.assertEqual(0, len(errors))
@@ -523,7 +523,7 @@ class TestCxMGMTaC(unittest.TestCase):
         '''Test the retrieval of user data from the LDAP server where
         the user does not have an email address.'''
 
-        options = Options('.', True)
+        options = Options('.', True, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         model = CxMGMTaC.Model.load(Path("data") / Path("retrieve_user_entries_no_email"))
         errors = model.validate(options)
         self.assertEqual(0, len(errors))
@@ -556,7 +556,7 @@ class TestCxMGMTaC(unittest.TestCase):
         '''Test the retrieval of user data from the LDAP server where
         the user does not have a first name.'''
 
-        options = Options('.', True)
+        options = Options('.', True, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         model = CxMGMTaC.Model.load(Path("data") / Path("retrieve_user_entries_no_first_name"))
         errors = model.validate(options)
         self.assertEqual(0, len(errors))
@@ -589,7 +589,7 @@ class TestCxMGMTaC(unittest.TestCase):
         '''Test the retrieval of user data from the LDAP server where
         the user does not have a last name.'''
 
-        options = Options('.', True)
+        options = Options('.', True, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         model = CxMGMTaC.Model.load(Path("data") / Path("retrieve_user_entries_no_last_name"))
         errors = model.validate(options)
         self.assertEqual(0, len(errors))
@@ -622,7 +622,7 @@ class TestCxMGMTaC(unittest.TestCase):
         '''Test the retrieval of user data from the LDAP server where
         the user cannot be found.'''
 
-        options = Options('.', True)
+        options = Options('.', True, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         model = CxMGMTaC.Model.load(Path("data") / Path("retrieve_missing_user_entries"))
         errors = model.validate(options)
         self.assertEqual(1, len(errors))
@@ -637,11 +637,21 @@ class TestCxMGMTaC(unittest.TestCase):
                 side_effect=mocked_requests_request)
     def test_exceed_user_limit(self, mock_get):
 
-        options = Options('.', True)
+        options = Options('.', True, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         model = CxMGMTaC.Model.load(Path("data") / Path("exceed_user_limit"))
         errors = model.validate(options)
         self.assertEqual(1, len(errors))
         self.assertTrue(isinstance(errors[0], CxMGMTaC.ExceedUserLimit))
+
+    @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
+                side_effect=mocked_requests_request)
+    def test_exceed_audit_user_limit(self, mock_get):
+
+        options = Options('.', False, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
+        model = CxMGMTaC.Model.load(Path("data") / Path("exceed_audit_user_limit"))
+        errors = model.validate(options)
+        self.assertEqual(1, len(errors))
+        self.assertTrue(isinstance(errors[0], CxMGMTaC.ExceedAuditUserLimit))
 
     def test_user_to_dict(self):
 
@@ -758,7 +768,7 @@ class TestCxMGMTaC(unittest.TestCase):
 
     def update_common(self, path):
 
-        options = Options(None, False)
+        options = Options(None, False, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         old_model = CxMGMTaC.Model.retrieve_from_access_control()
         new_model = CxMGMTaC.Model.load(path)
         errors = new_model.validate(options)

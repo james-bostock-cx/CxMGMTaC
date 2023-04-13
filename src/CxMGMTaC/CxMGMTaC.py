@@ -64,6 +64,9 @@ USERS = 'users'
 
 # Other constants
 DEFAULT_LOG_FORMAT = '%(asctime)s | %(levelname)s | %(funcName)s: %(message)s'
+# The default numeric id of the "use-cxaudit" permission (see the
+# [CxDB].[accesscontrol].[Permissions] table).
+DEFAULT_USE_CXAUDIT_PERMISSION = 33
 
 Property = namedtuple('Property', 'name type mandatory')
 
@@ -273,6 +276,11 @@ class Users:
     def append(self, user):
         """Adds a user to the list of users."""
         self.users.append(user)
+
+    def get_users_with_permission(self, permission):
+        """Returns a list of users with the specified permission."""
+
+        return [user for user in self.users if role_manager.user_has_permission(user, permission)]
 
     def __len__(self):
         """Returns the number of users."""
@@ -604,6 +612,9 @@ class Model:
         Make sure that the number of users does not exceed the limit
         set by the license.
 
+        Make sure that the number of CxAudit users does not exceed the
+        limit set by the license.
+
         Makes sure that each user belongs to at least one team.
 
         """
@@ -615,6 +626,12 @@ class Model:
         if num_users > max_users:
             logging.error(f'Number of users ({num_users}) exceeds maxiumum ({max_users})')
             errors.append(ExceedUserLimit(num_users, max_users))
+
+        num_audit_users = len(self.users.get_users_with_permission(options.use_cxaudit_permission))
+        max_audit_users = server_license_data.max_audit_users
+        if num_audit_users > max_audit_users:
+            logging.error(f'Number of CxAudit users ({num_audit_users}) exceeds maxiumum ({max_audit_users})')
+            errors.append(ExceedAuditUserLimit(num_audit_users, max_audit_users))
 
         for user in self.users.users:
             user.validate(errors)
@@ -887,28 +904,36 @@ class RoleManager:
     def __init__(self, ac_api):
 
         self.all_roles = ac_api.get_all_roles()
+        self.name_map = {}
+        self.id_map = {}
+        for role in self.all_roles:
+            self.name_map[role.name] = role
+            self.id_map[role.id] = role
         logging.debug(f'all_roles: {[r.name for r in self.all_roles]}')
 
     def name_from_id(self, role_id):
         """Returns the role name that corresponds to role_id."""
-        for role in self.all_roles:
-            if role.id == role_id:
-                return role.name
-
-        raise ValueError(f'{role_id}: invalid role ID')
+        try:
+            return self.id_map[role_id].name
+        except KeyError:
+            raise ValueError(f'{role_id}: invalid role ID')
 
     def id_from_name(self, role_name):
         """Returns the role identifier that corresponds to role_name."""
-        for role in self.all_roles:
-            if role.name == role_name:
-                return role.id
-
-        raise ValueError(f'{role_name}: invalid role name')
+        try:
+            return self.name_map[role_name].id
+        except KeyError:
+            raise ValueError(f'{role_name}: invalid role name')
 
     def valid_name(self, role_name):
         """Indicates with a role name is valid."""
-        for role in self.all_roles:
-            if role.name == role_name:
+        return role_name in self.name_map
+
+    def user_has_permission(self, user, permission):
+        """Indicates whether the specified user has the specified permission."""
+        for role_name in user.roles:
+            if role_name in self.name_map and \
+               permission in self.name_map[role_name].permission_ids:
                 return True
 
         return False
@@ -985,6 +1010,19 @@ class DuplicateUser:
     def __repr__(self):
 
         return f'DuplicateUser({self.user_reference})'
+
+
+class ExceedAuditUserLimit:
+    """The number of audit users exceeds the number allowed by the license."""
+
+    def __init__(self, num_users, max_users):
+
+        self.num_users = num_users
+        self.max_users = max_users
+
+    def __repr__(self):
+
+        return f'ExceedUserLimit({self.num_users}, {self.max_users})'
 
 
 class ExceedUserLimit:
@@ -1246,6 +1284,9 @@ if __name__ == '__main__':
                                help='Data directory')
     update_parser.add_argument('--dry-run', action='store_true', default=False,
                                help='Display updates without performing them')
+    update_parser.add_argument('--use-cxaudit-permission', type=int,
+                               default=DEFAULT_USE_CXAUDIT_PERMISSION,
+                               help='Identifier of the use-cxaudit permission')
     update_parser.set_defaults(func=update)
 
     # Parser for the validate command
@@ -1255,6 +1296,9 @@ if __name__ == '__main__':
     validate_parser.add_argument('-r', '--retrieve-user-entries',
                                  action='store_true', default=False,
                                  help='Retrieve user entries')
+    validate_parser.add_argument('--use-cxaudit-permission', type=int,
+                                 default=DEFAULT_USE_CXAUDIT_PERMISSION,
+                                 help='Identifier of the use-cxaudit permission')
     validate_parser.set_defaults(func=validate)
 
     args = parser.parse_args([arg for arg in sys.argv[1:]

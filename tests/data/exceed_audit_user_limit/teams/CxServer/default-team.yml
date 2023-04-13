@@ -1,0 +1,6 @@
+full_name: /CxServer/default team
+name: default team
+users:
+- authentication_provider_name: Application
+  username: admin
+
