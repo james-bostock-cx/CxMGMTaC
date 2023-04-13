@@ -32,6 +32,7 @@ import sys
 import yaml
 
 from CheckmarxPythonSDK.CxRestAPISDK import AccessControlAPI
+from CheckmarxPythonSDK.CxRestAPISDK import GeneralAPI
 
 # Constants for dictionary access
 ACTIVE = 'active'
@@ -600,9 +601,21 @@ class Model:
     def validate_users(self, options, errors):
         """Validates the model's users.
 
+        Make sure that the number of users does not exceed the limit
+        set by the license.
+
         Makes sure that each user belongs to at least one team.
+
         """
         logging.debug('Validating users')
+
+        server_license_data = general_api.get_server_license_data()
+        num_users = len(self.users)
+        max_users = server_license_data.max_users
+        if num_users > max_users:
+            logging.error(f'Number of users ({num_users}) exceeds maxiumum ({max_users})')
+            errors.append(ExceedUserLimit(num_users, max_users))
+
         for user in self.users.users:
             user.validate(errors)
             key = UserReference(user.username, user.authentication_provider_name)
@@ -972,6 +985,19 @@ class DuplicateUser:
         return f'DuplicateUser({self.user_reference})'
 
 
+class ExceedUserLimit:
+    """More than one user have the same username and authentication provider."""
+
+    def __init__(self, num_users, max_users):
+
+        self.num_users = num_users
+        self.max_users = max_users
+
+    def __repr__(self):
+
+        return f'ExceedUserLimit({self.num_users}, {self.max_users})'
+
+
 class InvalidRole:
     """An invalid role error."""
 
@@ -1191,6 +1217,7 @@ def usage(args):
 ac_api = AccessControlAPI()
 authentication_provider_manager = AuthenticationProviderManager(ac_api)
 role_manager = RoleManager(ac_api)
+general_api = GeneralAPI()
 
 if __name__ == '__main__':
 

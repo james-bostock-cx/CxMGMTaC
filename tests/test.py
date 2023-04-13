@@ -81,6 +81,9 @@ class MockCxSAST:
         with open(self.responses_dir / Path('roles.json'), 'r') as f:
             self.roles = json.load(f)
 
+        with open(self.responses_dir / Path('server_license_data.json'), 'r') as f:
+            self.server_license_data = json.load(f)
+
         with open(self.responses_dir / Path('teams.json'), 'r') as f:
             self.teams = json.load(f)
 
@@ -157,6 +160,8 @@ class MockCxSAST:
                 if user[ID] == user_id:
                     return (200, user)
             return (404, None)
+        elif request[URL] == 'http://localhost/cxrestapi/serverLicenseData':
+            return (200, self.server_license_data)
         else:
             return (404, None)
 
@@ -373,9 +378,9 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_add_team(self, mock_get):
 
         self.update_common(Path("data") / Path("add_team"))
-        self.assertEqual(4, len(mockCxSAST.requests),
-                         'Expected exactly three requests')
-        request = mockCxSAST.requests[2]
+        self.assertEqual(5, len(mockCxSAST.requests),
+                         'Expected exactly five requests')
+        request = mockCxSAST.requests[3]
         self.assertEqual('POST', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/Teams',
                          request['url'])
@@ -385,13 +390,13 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_add_team_with_user(self, mock_get):
 
         self.update_common(Path("data") / Path("add_team_with_user"))
-        self.assertEqual(5, len(mockCxSAST.requests),
-                         'Expected exactly four requests')
-        request = mockCxSAST.requests[2]
+        self.assertEqual(6, len(mockCxSAST.requests),
+                         'Expected exactly six requests')
+        request = mockCxSAST.requests[3]
         self.assertEqual('POST', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/Teams',
                          request['url'])
-        request = mockCxSAST.requests[4]
+        request = mockCxSAST.requests[5]
         self.assertEqual('PUT', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/Users/11019',
                          request['url'])
@@ -401,13 +406,13 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_delete_team_with_user(self, mock_get):
 
         self.update_common(Path("data") / Path("delete_team_with_user"))
-        self.assertEqual(4, len(mockCxSAST.requests),
-                         'Expected exactly three requests')
-        request = mockCxSAST.requests[2]
+        self.assertEqual(5, len(mockCxSAST.requests),
+                         'Expected exactly five requests')
+        request = mockCxSAST.requests[3]
         self.assertEqual('PUT', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/Users/5010',
                          request['url'])
-        request = mockCxSAST.requests[3]
+        request = mockCxSAST.requests[4]
         self.assertEqual('DELETE', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/Teams/2002',
                          request['url'])
@@ -417,9 +422,9 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_add_user(self, mock_get):
 
         self.update_common(Path("data") / Path("add_user"))
-        self.assertEqual(3, len(mockCxSAST.requests),
-                         'Expected exactly three requests')
-        request = mockCxSAST.requests[2]
+        self.assertEqual(4, len(mockCxSAST.requests),
+                         'Expected exactly four requests')
+        request = mockCxSAST.requests[3]
         self.assertEqual('POST', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/Users',
                          request['url'])
@@ -429,13 +434,13 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_add_users(self, mock_get):
 
         self.update_common(Path("data") / Path("add_users"))
-        self.assertEqual(4, len(mockCxSAST.requests),
-                         'Expected exactly three requests')
-        request = mockCxSAST.requests[2]
+        self.assertEqual(5, len(mockCxSAST.requests),
+                         'Expected exactly five requests')
+        request = mockCxSAST.requests[3]
         self.assertEqual('POST', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/Users',
                          request['url'])
-        request = mockCxSAST.requests[3]
+        request = mockCxSAST.requests[4]
         self.assertEqual('POST', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/Users',
                          request['url'])
@@ -445,9 +450,9 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_delete_user(self, mock_get):
 
         self.update_common(Path("data") / Path("delete_user"))
-        self.assertEqual(3, len(mockCxSAST.requests),
-                         'Expected exactly three requests')
-        request = mockCxSAST.requests[2]
+        self.assertEqual(4, len(mockCxSAST.requests),
+                         'Expected exactly four requests')
+        request = mockCxSAST.requests[3]
         self.assertEqual('DELETE', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/Users/11019',
                          request['url'])
@@ -457,13 +462,13 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_delete_users(self, mock_get):
 
         self.update_common(Path("data") / Path("delete_users"))
-        self.assertEqual(4, len(mockCxSAST.requests),
-                         'Expected exactly three requests')
-        request = mockCxSAST.requests[2]
+        self.assertEqual(5, len(mockCxSAST.requests),
+                         'Expected exactly five requests')
+        request = mockCxSAST.requests[3]
         self.assertEqual('DELETE', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/Users/11019',
                          request['url'])
-        request = mockCxSAST.requests[3]
+        request = mockCxSAST.requests[4]
         self.assertEqual('DELETE', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/Users/11015',
                          request['url'])
@@ -473,9 +478,9 @@ class TestCxMGMTaC(unittest.TestCase):
     def test_update_user(self, mock_get):
 
         self.update_common(Path("data") / Path("update_user"))
-        self.assertEqual(3, len(mockCxSAST.requests),
-                         'Expected exactly three requests')
-        request = mockCxSAST.requests[2]
+        self.assertEqual(4, len(mockCxSAST.requests),
+                         'Expected exactly four requests')
+        request = mockCxSAST.requests[3]
         self.assertEqual('PUT', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/Users/11019',
                          request['url'])
@@ -505,9 +510,9 @@ class TestCxMGMTaC(unittest.TestCase):
                     break
         self.assertTrue(found, 'Could not find user in users.yml')
         shutil.rmtree('users')
-        self.assertEqual(1, len(mockCxSAST.requests),
-                         'Expected exactly one request')
-        request = mockCxSAST.requests[0]
+        self.assertEqual(2, len(mockCxSAST.requests),
+                         'Expected exactly two requests')
+        request = mockCxSAST.requests[1]
         self.assertEqual('GET', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/LDAPServers/3/UserEntries?userNameContainsPattern=testuser',
                          request['url'])
@@ -538,9 +543,9 @@ class TestCxMGMTaC(unittest.TestCase):
                     break
         self.assertTrue(found, 'Could not find user in users.yml')
         shutil.rmtree('users')
-        self.assertEqual(1, len(mockCxSAST.requests),
-                         'Expected exactly one request')
-        request = mockCxSAST.requests[0]
+        self.assertEqual(2, len(mockCxSAST.requests),
+                         'Expected exactly two requests')
+        request = mockCxSAST.requests[1]
         self.assertEqual('GET', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/LDAPServers/3/UserEntries?userNameContainsPattern=noemail',
                          request['url'])
@@ -571,9 +576,9 @@ class TestCxMGMTaC(unittest.TestCase):
                     break
         self.assertTrue(found, 'Could not find user in users.yml')
         shutil.rmtree('users')
-        self.assertEqual(1, len(mockCxSAST.requests),
-                         'Expected exactly one request')
-        request = mockCxSAST.requests[0]
+        self.assertEqual(2, len(mockCxSAST.requests),
+                         'Expected exactly two requests')
+        request = mockCxSAST.requests[1]
         self.assertEqual('GET', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/LDAPServers/3/UserEntries?userNameContainsPattern=nofirstname',
                          request['url'])
@@ -604,9 +609,9 @@ class TestCxMGMTaC(unittest.TestCase):
                     break
         self.assertTrue(found, 'Could not find user in users.yml')
         shutil.rmtree('users')
-        self.assertEqual(1, len(mockCxSAST.requests),
-                         'Expected exactly one request')
-        request = mockCxSAST.requests[0]
+        self.assertEqual(2, len(mockCxSAST.requests),
+                         'Expected exactly two requests')
+        request = mockCxSAST.requests[1]
         self.assertEqual('GET', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/LDAPServers/3/UserEntries?userNameContainsPattern=nolastname',
                          request['url'])
@@ -621,12 +626,22 @@ class TestCxMGMTaC(unittest.TestCase):
         model = CxMGMTaC.Model.load(Path("data") / Path("retrieve_missing_user_entries"))
         errors = model.validate(options)
         self.assertEqual(1, len(errors))
-        self.assertEqual(1, len(mockCxSAST.requests),
-                         'Expected exactly one request')
-        request = mockCxSAST.requests[0]
+        self.assertEqual(2, len(mockCxSAST.requests),
+                         'Expected exactly two requests')
+        request = mockCxSAST.requests[1]
         self.assertEqual('GET', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/LDAPServers/3/UserEntries?userNameContainsPattern=nosuchuser',
                          request['url'])
+
+    @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
+                side_effect=mocked_requests_request)
+    def test_exceed_user_limit(self, mock_get):
+
+        options = Options('.', True)
+        model = CxMGMTaC.Model.load(Path("data") / Path("exceed_user_limit"))
+        errors = model.validate(options)
+        self.assertEqual(1, len(errors))
+        self.assertTrue(isinstance(errors[0], CxMGMTaC.ExceedUserLimit))
 
     def test_user_to_dict(self):
 
