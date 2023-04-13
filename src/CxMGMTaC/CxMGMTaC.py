@@ -684,9 +684,11 @@ class Model:
         logging.info('Applying changes')
         new_model.update_team_ids(self)
         self.add_teams(new_model, dry_run)
-        self.add_users(new_model, dry_run)
-        self.update_users(new_model, dry_run)
+        # We delete existing users before adding new users to avoid
+        # exceeding the number of users allowed by the license.
         self.delete_users(new_model, dry_run)
+        self.update_users(new_model, dry_run)
+        self.add_users(new_model, dry_run)
         self.delete_teams(new_model, dry_run)
 
     def add_teams(self, new_model, dry_run):
