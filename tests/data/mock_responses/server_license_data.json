@@ -1,0 +1,125 @@
+{
+  "expirationDate": "8/1/2023",
+  "maxLOC": "3000000",
+  "hid": "#109801625259625718036",
+  "maxConcurrentScans": "5",
+  "supportedLanguages": [
+    {
+      "language": "Apex",
+      "isSupported": true
+    },
+    {
+      "language": "ASP",
+      "isSupported": true
+    },
+    {
+      "language": "Cobol",
+      "isSupported": true
+    },
+    {
+      "language": "Common",
+      "isSupported": true
+    },
+    {
+      "language": "CPP",
+      "isSupported": true
+    },
+    {
+      "language": "CSharp",
+      "isSupported": true
+    },
+    {
+      "language": "Dart",
+      "isSupported": true
+    },
+    {
+      "language": "Go",
+      "isSupported": true
+    },
+    {
+      "language": "Groovy",
+      "isSupported": true
+    },
+    {
+      "language": "HTML5",
+      "isSupported": true
+    },
+    {
+      "language": "Java",
+      "isSupported": true
+    },
+    {
+      "language": "JavaScript",
+      "isSupported": true
+    },
+    {
+      "language": "Kotlin",
+      "isSupported": true
+    },
+    {
+      "language": "Objc",
+      "isSupported": true
+    },
+    {
+      "language": "Perl",
+      "isSupported": true
+    },
+    {
+      "language": "PHP",
+      "isSupported": true
+    },
+    {
+      "language": "PLSQL",
+      "isSupported": true
+    },
+    {
+      "language": "Python",
+      "isSupported": true
+    },
+    {
+      "language": "RPG",
+      "isSupported": true
+    },
+    {
+      "language": "Ruby",
+      "isSupported": true
+    },
+    {
+      "language": "Scala",
+      "isSupported": true
+    },
+    {
+      "language": "Swift",
+      "isSupported": true
+    },
+    {
+      "language": "Typescript",
+      "isSupported": true
+    },
+    {
+      "language": "Unknown",
+      "isSupported": false
+    },
+    {
+      "language": "VB6",
+      "isSupported": true
+    },
+    {
+      "language": "VbNet",
+      "isSupported": true
+    },
+    {
+      "language": "VbScript",
+      "isSupported": true
+    }
+  ],
+  "edition": "SDLC",
+  "isOsaEnabled": true,
+  "osaExpirationDate": "",
+  "currentUsers": 1,
+  "maxUsers": 13,
+  "maxAuditUsers": 1,
+  "currentAuditUsers": 1,
+  "projectsAllowed": 100,
+  "currentProjectsCount": 15
+}
