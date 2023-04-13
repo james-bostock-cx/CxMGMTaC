@@ -637,7 +637,7 @@ class TestCxMGMTaC(unittest.TestCase):
                 side_effect=mocked_requests_request)
     def test_exceed_user_limit(self, mock_get):
 
-        options = Options('.', True, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
+        options = Options('.', False, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
         model = CxMGMTaC.Model.load(Path("data") / Path("exceed_user_limit"))
         errors = model.validate(options)
         self.assertEqual(1, len(errors))
