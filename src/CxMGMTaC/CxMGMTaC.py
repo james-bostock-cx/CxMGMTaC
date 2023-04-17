@@ -1022,7 +1022,7 @@ class ExceedAuditUserLimit:
 
     def __repr__(self):
 
-        return f'ExceedUserLimit({self.num_users}, {self.max_users})'
+        return f'ExceedAuditUserLimit({self.num_users}, {self.max_users})'
 
 
 class ExceedUserLimit:
