@@ -141,7 +141,7 @@ class MockCxSAST:
             elif len(bits) == 8 and bits[7].startswith('UserEntries'):
                 ldap_server_id = int(bits[6])
                 username_contains_pattern = bits[7]
-                username = username_contains_pattern.split('=')[1]
+                username = username_contains_pattern.split('=')[1].lower()
                 if ldap_server_id == 3 and username in self.ldap_user_entries:
                     return (200, self.ldap_user_entries[username])
                 else:
@@ -515,6 +515,38 @@ class TestCxMGMTaC(unittest.TestCase):
         request = mockCxSAST.requests[1]
         self.assertEqual('GET', request['method'])
         self.assertEqual('http://localhost/cxrestapi/auth/LDAPServers/3/UserEntries?userNameContainsPattern=testuser',
+                         request['url'])
+
+    @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',
+                side_effect=mocked_requests_request)
+    def test_retrieve_user_entries_case_insensitive(self, mock_get):
+        '''Test the retrieval of user data from the LDAP server.'''
+
+        options = Options('.', True, CxMGMTaC.DEFAULT_USE_CXAUDIT_PERMISSION)
+        model = CxMGMTaC.Model.load(Path("data") / Path("retrieve_user_entries_case_insensitive"))
+        errors = model.validate(options)
+        self.assertEqual(0, len(errors))
+        with open(Path('users') / Path('users.yml'), 'r') as f:
+            users = yaml.load(f, Loader=yaml.CLoader)
+            found = False
+            for user in users['users']:
+                if (user['username'] == 'TestUser'
+                    and user['email'] == 'testuser@cxmgmtac.com'
+                    and user['first_name'] == 'test'
+                    and user['last_name'] == 'user'):
+                    found = True
+                    # The following have default values specified at
+                    # the top-level of the users.yml file.
+                    self.assertNotIn('active', user)
+                    self.assertNotIn('locale_id', user)
+                    break
+        self.assertTrue(found, 'Could not find user in users.yml')
+        shutil.rmtree('users')
+        self.assertEqual(2, len(mockCxSAST.requests),
+                         'Expected exactly two requests')
+        request = mockCxSAST.requests[1]
+        self.assertEqual('GET', request['method'])
+        self.assertEqual('http://localhost/cxrestapi/auth/LDAPServers/3/UserEntries?userNameContainsPattern=TestUser',
                          request['url'])
 
     @mock.patch('CheckmarxPythonSDK.utilities.httpRequests.requests.request',

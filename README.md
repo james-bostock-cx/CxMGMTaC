@@ -90,7 +90,9 @@ server. This is enabled by passing either the `-r` or
 i passed and a user reference is found in a team file for which there
 is not corresponding user entry in the `users.yml` file, the script
 will try to retrieve the user’s details from the LDAP server specified
-in the user reference.
+in the user reference. The comparison between the username in the team
+file and the username(s) retrieved from the LDAP server is
+case-insensitive.
 
 The following fields are retrieved from the LDAP server:
 

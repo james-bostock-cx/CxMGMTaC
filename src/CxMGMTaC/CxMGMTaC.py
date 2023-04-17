@@ -667,7 +667,7 @@ class Model:
         user_entries = ac_api.get_user_entries_by_search_criteria(ldap_server_id, user_ref.username)
         for user_entry in user_entries:
             logging.debug(f'User_entry: {user_entry}')
-            if user_entry.username == user_ref.username:
+            if user_entry.username.lower() == user_ref.username.lower():
                 logging.debug(f'Found user entry for {user_ref.username}')
                 if not user_entry.first_name:
                     user_entry.first_name = user_entry.username
